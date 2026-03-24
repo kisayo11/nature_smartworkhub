@@ -1,0 +1,324 @@
+// 설정: 배포된 Google Apps Script Web App URL을 입력하세요.
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz_irqoJCGt8N5WRHj185VSVUuyE_JppyWRX62x7pjOJtyDLhQGtLqjgW1ilxspo6h0/exec';
+
+let appsData = [];
+let isAdmin = false;
+let currentCategory = 'All';
+let searchQuery = '';
+
+// DOM Elements
+const loadingEl = document.getElementById('loading');
+const appsGrid = document.getElementById('apps-grid');
+const adminLoginBtn = document.getElementById('admin-login-btn');
+const adminDashboardModal = document.getElementById('admin-dashboard-modal');
+const adminAppsList = document.getElementById('admin-apps-list');
+const adminStatus = document.getElementById('admin-status');
+const appForm = document.getElementById('app-form');
+
+const searchInput = document.getElementById('search-input');
+const categoryNav = document.getElementById('category-nav');
+const currentCategoryTitle = document.getElementById('current-category-title');
+const timeEl = document.getElementById('current-time');
+const dateEl = document.getElementById('current-date');
+const sidebar = document.getElementById('sidebar');
+const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+const mobileClose = document.getElementById('mobile-close');
+
+// Handle Live Clock
+function initClock() {
+    const updateTime = () => {
+        const now = new Date();
+        if (timeEl) timeEl.innerText = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+        if (dateEl) dateEl.innerText = now.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    };
+    updateTime();
+    setInterval(updateTime, 1000);
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    initClock();
+    if (!SCRIPT_URL) {
+        showError(`초기 설정이 필요합니다. Code.gs를 배포하고 app.js 상단에 SCRIPT_URL을 입력하세요.`);
+        return;
+    }
+    fetchApps();
+});
+
+// Mobile Sidebar
+if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', () => sidebar.classList.add('open'));
+if (mobileClose) mobileClose.addEventListener('click', () => sidebar.classList.remove('open'));
+
+if (appForm) appForm.addEventListener('submit', submitAppForm);
+
+// Keyboard Shortcut for Search
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInput.focus();
+    }
+});
+
+// Search Logic
+if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value.toLowerCase();
+        renderApps();
+    });
+}
+
+// Fetch apps
+async function fetchApps() {
+    try {
+        const response = await fetch(SCRIPT_URL);
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            appsData = result.data;
+            renderCategories();
+            renderApps();
+        } else {
+            showError("데이터 로드 실패: " + result.message);
+        }
+    } catch (error) {
+        showError("네트워크 오류. Apps Script 배포 버전을 확인하세요.");
+        console.error(error);
+    }
+}
+
+// Render Sidebar Categories
+function renderCategories() {
+    const categories = ['All', ...new Set(appsData.map(a => a.category || '일반'))];
+
+    if (categoryNav) {
+        categoryNav.innerHTML = categories.map(cat => {
+            let icon = 'fa-folder';
+            if (cat === 'All') icon = 'fa-layer-group';
+            else if (cat === 'HR' || cat.includes('인사')) icon = 'fa-users';
+            else if (cat === 'Patient Care' || cat.includes('간호')) icon = 'fa-bed-pulse';
+            else if (cat === 'Tools' || cat.includes('툴')) icon = 'fa-wrench';
+
+            return `
+            <li class="nav-item ${cat === currentCategory ? 'active' : ''}" data-category="${cat}">
+                <i class="fa-solid ${icon}"></i> <span>${cat === 'All' ? '전체 워크스페이스' : cat}</span>
+            </li>
+        `}).join('');
+
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                currentCategory = e.currentTarget.dataset.category;
+                renderCategories(); // update active class visually
+
+                // update title
+                if (currentCategoryTitle) {
+                    currentCategoryTitle.innerText = currentCategory === 'All' ? '추천 및 전체 워크스페이스' : `${currentCategory} 시스템`;
+                }
+
+                if (window.innerWidth <= 900) sidebar.classList.remove('open');
+                renderApps();
+            });
+        });
+    }
+}
+
+// Render Apps Grid
+function renderApps() {
+    loadingEl.classList.add('hidden');
+    appsGrid.classList.remove('hidden');
+
+    if (appsData.length === 0) {
+        loadingEl.classList.remove('hidden');
+        appsGrid.classList.add('hidden');
+        loadingEl.innerHTML = `
+            <i class="fa-solid fa-folder-open" style="font-size: 2.5rem; margin-bottom: 1rem; color: var(--text-tertiary);"></i>
+            <h3 style="margin-bottom:0.5rem; color:var(--text-primary); font-size:1.1rem;">등록된 시스템이 없습니다</h3>
+            <p style="font-size:0.9rem;">좌측 하단 '시스템 관리'에서 새 항목을 배포하세요.</p>
+        `;
+        return;
+    }
+
+    const filteredApps = appsData.filter(app => {
+        const matchesCategory = currentCategory === 'All' || (app.category || '일반') === currentCategory;
+        const searchTarget = (app.name + ' ' + (app.description || '')).toLowerCase();
+        const matchesSearch = searchTarget.includes(searchQuery);
+        return matchesCategory && matchesSearch;
+    });
+
+    if (filteredApps.length === 0) {
+        loadingEl.classList.remove('hidden');
+        appsGrid.classList.add('hidden');
+        loadingEl.innerHTML = `
+            <i class="fa-solid fa-magnifying-glass" style="font-size: 2.5rem; margin-bottom: 1rem; color: var(--text-tertiary);"></i>
+            <p>검색 조건에 일치하는 시스템이 없습니다.</p>
+        `;
+        return;
+    }
+
+    appsGrid.innerHTML = filteredApps.map((app, index) => `
+        <a href="${app.url}" target="${app.url.startsWith('http') ? '_blank' : '_self'}" class="bento-card" style="animation: fadeIn 0.3s ease forwards; animation-delay: ${index * 0.05}s; opacity: 0;">
+            <div class="card-header">
+                <div class="card-icon"><i class="${app.icon || 'fa-solid fa-link'}"></i></div>
+                <div class="card-title-wrap">
+                    <div class="card-category">${app.category || '일반'}</div>
+                    <h3>${app.name}</h3>
+                </div>
+            </div>
+            <div class="card-content">
+                <p>${app.description || '시스템에 대한 설명이 없습니다.'}</p>
+            </div>
+        </a>
+    `).join('');
+}
+
+function showError(msg) {
+    loadingEl.innerHTML = `
+        <i class="fa-solid fa-circle-exclamation" style="font-size: 2.5rem; color: var(--danger-color); margin-bottom:1rem;"></i>
+        <div style="text-align: center; line-height: 1.6;">${msg}</div>
+    `;
+}
+
+// Modal Logic
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+if (adminLoginBtn) {
+    adminLoginBtn.addEventListener('click', () => {
+        if (isAdmin) openAdminDashboard();
+        else {
+            openModal('login-modal');
+            document.getElementById('admin-password').value = '';
+            setTimeout(() => document.getElementById('admin-password').focus(), 100);
+        }
+    });
+}
+
+function loginAdmin() {
+    const pw = document.getElementById('admin-password').value;
+    if (!pw) return alert("비밀번호를 입력해주세요.");
+    isAdmin = true;
+    window.adminPassword = pw;
+    closeModal('login-modal');
+    openAdminDashboard();
+}
+
+function openAdminDashboard() {
+    openModal('admin-dashboard-modal');
+    renderAdminTable();
+}
+
+function renderAdminTable() {
+    adminAppsList.innerHTML = appsData.map(app => `
+        <tr>
+            <td><span class="card-category">${app.category || '일반'}</span></td>
+            <td style="font-weight:600;"><i class="${app.icon}" style="color:var(--text-tertiary); margin-right:0.5rem;"></i>${app.name}</td>
+            <td style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                <a href="${app.url}" target="_blank" style="color:var(--text-secondary); text-decoration:none;">${app.url}</a>
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn btn-secondary btn-sm" onclick="editApp('${app.id}')">수정</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteApp('${app.id}')">삭제</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+
+    if (appsData.length === 0) {
+        adminAppsList.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 2rem; color:var(--text-secondary);">배포된 시스템이 없습니다.</td></tr>';
+    }
+}
+
+function openAppForm(appId = null) {
+    appForm.reset();
+    
+    // Update datalist with existing unique categories
+    const categoryList = document.getElementById('category-list');
+    if (categoryList) {
+        let categories = new Set(appsData.map(a => a.category).filter(c => c && c.trim() !== ''));
+        ['HR / 인사', '환자 간호 / 진료', '업무 툴', '일반'].forEach(opt => categories.add(opt));
+        categoryList.innerHTML = Array.from(categories).map(cat => `<option value="${cat}"></option>`).join('');
+    }
+
+    if (appId) {
+        document.getElementById('form-title').innerText = '시스템 정보 수정';
+        const app = appsData.find(a => a.id === appId);
+        if (app) {
+            document.getElementById('form-app-id').value = app.id;
+            document.getElementById('form-name').value = app.name;
+            document.getElementById('form-url').value = app.url;
+            document.getElementById('form-category').value = app.category || '일반';
+            document.getElementById('form-icon').value = app.icon || 'fa-solid fa-link';
+            document.getElementById('form-description').value = app.description || '';
+        }
+    } else {
+        document.getElementById('form-title').innerText = '새 시스템 등록';
+        document.getElementById('form-app-id').value = '';
+        document.getElementById('form-icon').value = 'fa-solid fa-link';
+    }
+    openModal('app-form-modal');
+}
+window.editApp = openAppForm;
+
+async function submitAppForm(e) {
+    e.preventDefault();
+    const id = document.getElementById('form-app-id').value;
+    const action = id ? 'edit' : 'add';
+    const appData = {
+        name: document.getElementById('form-name').value,
+        url: document.getElementById('form-url').value,
+        category: document.getElementById('form-category').value,
+        icon: document.getElementById('form-icon').value,
+        description: document.getElementById('form-description').value
+    };
+    if (id) appData.id = id;
+
+    const submitBtn = document.getElementById('form-submit-btn');
+    const originalText = submitBtn.innerText;
+    submitBtn.innerText = '동기화 중...';
+    submitBtn.disabled = true;
+
+    await requestBackend(action, appData);
+
+    submitBtn.innerText = originalText;
+    submitBtn.disabled = false;
+    closeModal('app-form-modal');
+}
+
+window.deleteApp = async function (id) {
+    if (!confirm("해당 시스템 배포를 취소하시겠습니까?")) return;
+    await requestBackend('delete', { id });
+}
+
+async function requestBackend(action, appData) {
+    alertStatus('동기화 중입니다...', 'success');
+    try {
+        const response = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: action, password: window.adminPassword, appData: appData })
+        });
+        const result = await response.json();
+        if (result.status === 'success') {
+            alertStatus('성공적으로 저장되었습니다.', 'success');
+            await fetchApps();
+            if (!document.getElementById('admin-dashboard-modal').classList.contains('hidden')) renderAdminTable();
+        } else {
+            alertStatus('권한 오류: ' + result.message, 'error');
+            if (result.message.includes('비밀번호')) {
+                isAdmin = false;
+                window.adminPassword = '';
+                closeModal('admin-dashboard-modal');
+                openModal('login-modal');
+            }
+        }
+    } catch (e) {
+        alertStatus('네트워크 연결이 지연되고 있습니다.', 'error');
+    }
+}
+
+function alertStatus(msg, type = 'success') {
+    adminStatus.innerText = msg;
+    adminStatus.className = 'status-message';
+    if (type === 'success') adminStatus.classList.add('status-success');
+    if (type === 'error') adminStatus.classList.add('status-error');
+    setTimeout(() => { if (adminStatus.innerText === msg) adminStatus.className = 'status-message'; }, 3000);
+}
