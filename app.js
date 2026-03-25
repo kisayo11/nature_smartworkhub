@@ -111,7 +111,7 @@ function renderCategories() {
 
                 // update title
                 if (currentCategoryTitle) {
-                    currentCategoryTitle.innerText = currentCategory === 'All' ? '추천 및 전체 워크스페이스' : `${currentCategory} 시스템`;
+                    currentCategoryTitle.innerText = currentCategory === 'All' ? '전체 워크스페이스' : `${currentCategory} 시스템`;
                 }
 
                 if (window.innerWidth <= 900) sidebar.classList.remove('open');
@@ -154,12 +154,26 @@ function renderApps() {
         return;
     }
 
-    appsGrid.innerHTML = filteredApps.map((app, index) => `
-        <a href="${app.url}" target="${app.url.startsWith('http') ? '_blank' : '_self'}" class="bento-card" style="animation: fadeIn 0.3s ease forwards; animation-delay: ${index * 0.05}s; opacity: 0;">
+    appsGrid.innerHTML = filteredApps.map((app, index) => {
+        const catName = app.category || '일반';
+        let hash = 0;
+        for (let i = 0; i < catName.length; i++) hash = catName.charCodeAt(i) + ((hash << 5) - hash);
+        const palette = [
+            { border: '#a2bb9c', bg: '#f1f6f0', text: '#688c5f' }, // Green
+            { border: '#f2d79d', bg: '#fefbf3', text: '#b89447' }, // Yellow
+            { border: '#b1d6c2', bg: '#f3f9f6', text: '#508b6d' }, // Mint
+            { border: '#9fb8d0', bg: '#f2f6f9', text: '#6889a8' }, // Blue
+            { border: '#d0a2b0', bg: '#faf2f4', text: '#a66a7b' }, // Pink
+            { border: '#b2aac3', bg: '#f7f6f9', text: '#7d7491' }  // Purple
+        ];
+        const theme = palette[Math.abs(hash) % palette.length];
+
+        return `
+        <a href="${app.url}" target="_blank" class="bento-card" style="animation: fadeIn 0.3s ease forwards; animation-delay: ${index * 0.05}s; opacity: 0; border-top: 4px solid ${theme.border};">
             <div class="card-header">
-                <div class="card-icon"><i class="${app.icon || 'fa-solid fa-link'}"></i></div>
+                <div class="card-icon" style="background: ${theme.bg}; color: ${theme.text}; border: none;"><i class="${app.icon || 'fa-solid fa-link'}"></i></div>
                 <div class="card-title-wrap">
-                    <div class="card-category">${app.category || '일반'}</div>
+                    <div class="card-category" style="color: ${theme.text}; font-weight: 700;">${catName}</div>
                     <h3>${app.name}</h3>
                 </div>
             </div>
@@ -167,7 +181,8 @@ function renderApps() {
                 <p>${app.description || '시스템에 대한 설명이 없습니다.'}</p>
             </div>
         </a>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function showError(msg) {
