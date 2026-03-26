@@ -173,20 +173,45 @@ function renderApps() {
         const theme = palette[Math.abs(hash) % palette.length];
 
         const isLocked = app.isLocked === true || app.isLocked === 'TRUE' || app.isLocked === 'true';
-        const lockIconHTML = isLocked ? `<i class="fa-solid fa-lock" style="color: #ff6b6b; font-size: 0.85rem; margin-left: 0.5rem;" title="보안 인증 필요"></i>` : '';
+        const isActive = app.isActive !== false && app.isActive !== 'FALSE' && app.isActive !== 'false';
         
-        let cardParams = isLocked 
-            ? `div onclick="openLockedApp('${app.url}', '${app.password || ''}')"` 
-            : `a href="${app.url}" target="_blank"`;
-        const closingTag = isLocked ? `div` : `a`;
+        const lockIconHTML = isLocked ? `<i class="fa-solid fa-lock" style="color: #ff6b6b; font-size: 0.85rem;" title="보안 인증 필요"></i>` : '';
+        const inactiveBadgeHTML = !isActive ? `<i class="fa-solid fa-ban" style="color: var(--text-tertiary); font-size: 0.85rem;" title="현재 비활성화(점검) 상태입니다"></i>` : '';
+        
+        let cardParams = '';
+        const safeUrl = (app.url || '').toString().replace(/'/g, "\\'");
+        const safePw = (app.password || '').toString().replace(/'/g, "\\'");
+        
+        if (!isActive) {
+            cardParams = `div onclick="alert('이 시스템은 현재 관리자에 의해 비활성화(점검 중) 상태입니다.')"`;
+        } else if (isLocked) {
+            cardParams = `div onclick="openLockedApp('${safeUrl}', '${safePw}')"`;
+        } else {
+            cardParams = `a href="${app.url}" target="_blank"`;
+        }
+        
+        const closingTag = (!isActive || isLocked) ? `div` : `a`;
+
+        let badgesContainer = '';
+        if (isLocked || !isActive) {
+            badgesContainer = `
+                <div style="display: flex; gap: 0.3rem; margin-left: 0.4rem; flex-shrink: 0; align-items: center;">
+                    ${lockIconHTML}
+                    ${inactiveBadgeHTML}
+                </div>
+            `;
+        }
 
         return `
-        <${cardParams} class="bento-card" style="animation: fadeIn 0.3s ease forwards; animation-delay: ${index * 0.05}s; opacity: 0; border-top: 4px solid ${theme.border}; ${isLocked ? 'cursor: pointer;' : ''}">
+        <${cardParams} class="bento-card ${!isActive ? 'deactivated' : ''}" style="animation: fadeIn 0.3s ease forwards; animation-delay: ${index * 0.05}s; opacity: 0; border-top: 4px solid ${theme.border}; ${(!isActive || isLocked) ? 'cursor: pointer;' : ''}">
             <div class="card-header">
                 <div class="card-icon" style="background: ${theme.bg}; color: ${theme.text}; border: none;"><i class="${app.icon || 'fa-solid fa-link'}"></i></div>
                 <div class="card-title-wrap">
                     <div class="card-category" style="color: ${theme.text}; font-weight: 700;">${catName}</div>
-                    <h3>${app.name} ${lockIconHTML}</h3>
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <h3 style="margin: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${app.name}</h3>
+                        ${badgesContainer}
+                    </div>
                 </div>
             </div>
             <div class="card-content">
@@ -265,10 +290,17 @@ function renderAdminTable() {
         return adminSortOrder === 'asc' ? cmp : -cmp;
     });
 
-    adminAppsList.innerHTML = sortedData.map(app => `
+    adminAppsList.innerHTML = sortedData.map(app => {
+        const isActive = app.isActive !== false && app.isActive !== 'FALSE' && app.isActive !== 'false';
+        
+        return `
         <tr>
             <td><span class="card-category">${app.category || '일반'}</span></td>
-            <td style="font-weight:600;"><i class="${app.icon}" style="color:var(--text-tertiary); margin-right:0.5rem;"></i>${app.name}</td>
+            <td style="font-weight:600;">
+                <i class="${app.icon}" style="color:var(--text-tertiary); margin-right:0.5rem;"></i>
+                <span style="${!isActive ? 'text-decoration: line-through; color: var(--text-tertiary);' : ''}">${app.name}</span>
+                ${!isActive ? '<i class="fa-solid fa-ban" style="color: var(--text-tertiary); font-size: 0.85rem; margin-left: 0.5rem;" title="비활성화 됨"></i>' : ''}
+            </td>
             <td style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                 <a href="${app.url}" target="_blank" style="color:var(--text-secondary); text-decoration:none;">${app.url}</a>
             </td>
@@ -279,7 +311,7 @@ function renderAdminTable() {
                 </div>
             </td>
         </tr>
-    `).join('');
+    `}).join('');
 
     if (appsData.length === 0) {
         adminAppsList.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 2rem; color:var(--text-secondary);">배포된 시스템이 없습니다.</td></tr>';
@@ -311,6 +343,9 @@ function openAppForm(appId = null) {
             const isLocked = app.isLocked === true || app.isLocked === 'TRUE' || app.isLocked === 'true';
             document.getElementById('form-is-locked').checked = isLocked;
             document.getElementById('form-app-password').value = app.password || '';
+            
+            const isActive = app.isActive !== false && app.isActive !== 'FALSE' && app.isActive !== 'false';
+            document.getElementById('form-is-active').checked = isActive;
         }
     } else {
         document.getElementById('form-title').innerText = '새 시스템 등록';
@@ -318,6 +353,7 @@ function openAppForm(appId = null) {
         document.getElementById('form-icon').value = 'fa-solid fa-link';
         document.getElementById('form-is-locked').checked = false;
         document.getElementById('form-app-password').value = '';
+        document.getElementById('form-is-active').checked = true;
     }
     togglePasswordField();
     openModal('app-form-modal');
@@ -329,6 +365,14 @@ async function submitAppForm(e) {
     const id = document.getElementById('form-app-id').value;
     const action = id ? 'edit' : 'add';
     const isLocked = document.getElementById('form-is-locked').checked;
+    const isActive = document.getElementById('form-is-active').checked;
+    const pwdValue = document.getElementById('form-app-password').value;
+    
+    if (isLocked && !pwdValue.trim()) {
+        alert("보안 잠금이 설정되었습니다. 반드시 접속 암호를 입력해주세요.");
+        return;
+    }
+    
     const appData = {
         name: document.getElementById('form-name').value,
         url: document.getElementById('form-url').value,
@@ -336,7 +380,8 @@ async function submitAppForm(e) {
         icon: document.getElementById('form-icon').value,
         description: document.getElementById('form-description').value,
         isLocked: isLocked,
-        password: isLocked ? document.getElementById('form-app-password').value : ''
+        password: isLocked ? document.getElementById('form-app-password').value : '',
+        isActive: isActive
     };
     if (id) appData.id = id;
 
@@ -398,10 +443,8 @@ window.togglePasswordField = function() {
     const pwdInput = document.getElementById('form-app-password');
     if (isLocked) {
         pwdGroup.style.display = 'block';
-        pwdInput.required = true;
     } else {
         pwdGroup.style.display = 'none';
-        pwdInput.required = false;
         pwdInput.value = '';
     }
 };
