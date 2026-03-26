@@ -74,7 +74,11 @@ async function fetchApps() {
         const result = await response.json();
 
         if (result.status === 'success') {
-            appsData = result.data;
+            appsData = result.data.sort((a, b) => {
+                const nameA = a.name || '';
+                const nameB = b.name || '';
+                return nameA.localeCompare(nameB, 'ko-KR');
+            });
             renderCategories();
             renderApps();
         } else {
@@ -168,19 +172,27 @@ function renderApps() {
         ];
         const theme = palette[Math.abs(hash) % palette.length];
 
+        const isLocked = app.isLocked === true || app.isLocked === 'TRUE' || app.isLocked === 'true';
+        const lockIconHTML = isLocked ? `<i class="fa-solid fa-lock" style="color: #ff6b6b; font-size: 0.85rem; margin-left: 0.5rem;" title="보안 인증 필요"></i>` : '';
+        
+        let cardParams = isLocked 
+            ? `div onclick="openLockedApp('${app.url}', '${app.password || ''}')"` 
+            : `a href="${app.url}" target="_blank"`;
+        const closingTag = isLocked ? `div` : `a`;
+
         return `
-        <a href="${app.url}" target="_blank" class="bento-card" style="animation: fadeIn 0.3s ease forwards; animation-delay: ${index * 0.05}s; opacity: 0; border-top: 4px solid ${theme.border};">
+        <${cardParams} class="bento-card" style="animation: fadeIn 0.3s ease forwards; animation-delay: ${index * 0.05}s; opacity: 0; border-top: 4px solid ${theme.border}; ${isLocked ? 'cursor: pointer;' : ''}">
             <div class="card-header">
                 <div class="card-icon" style="background: ${theme.bg}; color: ${theme.text}; border: none;"><i class="${app.icon || 'fa-solid fa-link'}"></i></div>
                 <div class="card-title-wrap">
                     <div class="card-category" style="color: ${theme.text}; font-weight: 700;">${catName}</div>
-                    <h3>${app.name}</h3>
+                    <h3>${app.name} ${lockIconHTML}</h3>
                 </div>
             </div>
             <div class="card-content">
                 <p>${app.description || '시스템에 대한 설명이 없습니다.'}</p>
             </div>
-        </a>
+        </${closingTag}>
         `;
     }).join('');
 }
@@ -216,13 +228,44 @@ function loginAdmin() {
     openAdminDashboard();
 }
 
+let adminSortColumn = 'category'; // 기본 정렬 속성
+let adminSortOrder = 'asc';
+
+window.sortAdminTable = function(column) {
+    if (adminSortColumn === column) {
+        adminSortOrder = adminSortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+        adminSortColumn = column;
+        adminSortOrder = 'asc';
+    }
+    renderAdminTable();
+};
+
 function openAdminDashboard() {
     openModal('admin-dashboard-modal');
     renderAdminTable();
 }
 
 function renderAdminTable() {
-    adminAppsList.innerHTML = appsData.map(app => `
+    const iconCat = document.getElementById('icon-sort-category');
+    const iconName = document.getElementById('icon-sort-name');
+    if (iconCat) iconCat.className = `fa-solid ${adminSortColumn === 'category' ? (adminSortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort'}`;
+    if (iconName) iconName.className = `fa-solid ${adminSortColumn === 'name' ? (adminSortOrder === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort'}`;
+
+    const sortedData = [...appsData].sort((a, b) => {
+        let valA = (a[adminSortColumn] || '').toString();
+        let valB = (b[adminSortColumn] || '').toString();
+        let cmp = valA.localeCompare(valB, 'ko-KR');
+        
+        // 카테고리 정렬 시 같은 카테고리 안에서는 이름으로 2차 정렬합니다.
+        if (cmp === 0 && adminSortColumn === 'category') {
+            cmp = (a.name || '').toString().localeCompare((b.name || '').toString(), 'ko-KR');
+        }
+        
+        return adminSortOrder === 'asc' ? cmp : -cmp;
+    });
+
+    adminAppsList.innerHTML = sortedData.map(app => `
         <tr>
             <td><span class="card-category">${app.category || '일반'}</span></td>
             <td style="font-weight:600;"><i class="${app.icon}" style="color:var(--text-tertiary); margin-right:0.5rem;"></i>${app.name}</td>
@@ -264,12 +307,19 @@ function openAppForm(appId = null) {
             document.getElementById('form-category').value = app.category || '일반';
             document.getElementById('form-icon').value = app.icon || 'fa-solid fa-link';
             document.getElementById('form-description').value = app.description || '';
+            
+            const isLocked = app.isLocked === true || app.isLocked === 'TRUE' || app.isLocked === 'true';
+            document.getElementById('form-is-locked').checked = isLocked;
+            document.getElementById('form-app-password').value = app.password || '';
         }
     } else {
         document.getElementById('form-title').innerText = '새 시스템 등록';
         document.getElementById('form-app-id').value = '';
         document.getElementById('form-icon').value = 'fa-solid fa-link';
+        document.getElementById('form-is-locked').checked = false;
+        document.getElementById('form-app-password').value = '';
     }
+    togglePasswordField();
     openModal('app-form-modal');
 }
 window.editApp = openAppForm;
@@ -278,12 +328,15 @@ async function submitAppForm(e) {
     e.preventDefault();
     const id = document.getElementById('form-app-id').value;
     const action = id ? 'edit' : 'add';
+    const isLocked = document.getElementById('form-is-locked').checked;
     const appData = {
         name: document.getElementById('form-name').value,
         url: document.getElementById('form-url').value,
         category: document.getElementById('form-category').value,
         icon: document.getElementById('form-icon').value,
-        description: document.getElementById('form-description').value
+        description: document.getElementById('form-description').value,
+        isLocked: isLocked,
+        password: isLocked ? document.getElementById('form-app-password').value : ''
     };
     if (id) appData.id = id;
 
@@ -337,3 +390,30 @@ function alertStatus(msg, type = 'success') {
     if (type === 'error') adminStatus.classList.add('status-error');
     setTimeout(() => { if (adminStatus.innerText === msg) adminStatus.className = 'status-message'; }, 3000);
 }
+
+// 비밀번호 폼 토글
+window.togglePasswordField = function() {
+    const isLocked = document.getElementById('form-is-locked').checked;
+    const pwdGroup = document.getElementById('password-group');
+    const pwdInput = document.getElementById('form-app-password');
+    if (isLocked) {
+        pwdGroup.style.display = 'block';
+        pwdInput.required = true;
+    } else {
+        pwdGroup.style.display = 'none';
+        pwdInput.required = false;
+        pwdInput.value = '';
+    }
+};
+
+// 보안 앱 오픈
+window.openLockedApp = function(url, requiredPw) {
+    const inputPw = prompt("🔒 보안이 설정된 시스템입니다.\n접속 비밀번호를 입력하세요.");
+    if (inputPw === null) return; // 취소시
+    
+    if (inputPw === requiredPw) {
+        window.open(url, '_blank');
+    } else {
+        alert("비밀번호가 일치하지 않습니다.");
+    }
+};
