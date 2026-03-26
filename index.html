@@ -43,6 +43,10 @@
                 </div>
             </div>
 
+            <div class="sidebar-credit" style="padding: 0 1.5rem 1rem 1.5rem; text-align: center; font-size: 0.75rem; color: var(--text-tertiary); line-height: 1.5;">
+                <div style="font-weight: 700; letter-spacing: 0.5px;">BUILT BY KISAYO</div>
+            </div>
+
             <div class="sidebar-footer">
                 <button class="admin-trigger" id="admin-login-btn">
                     <i class="fa-solid fa-gear"></i> <span>시스템 관리</span>
@@ -135,8 +139,8 @@
                 <table class="admin-table">
                     <thead>
                         <tr>
-                            <th>카테고리</th>
-                            <th>시스템명</th>
+                            <th style="cursor: pointer; user-select: none;" onclick="sortAdminTable('category')">카테고리 <i id="icon-sort-category" class="fa-solid fa-sort" style="color:var(--text-tertiary); margin-left:4px;"></i></th>
+                            <th style="cursor: pointer; user-select: none;" onclick="sortAdminTable('name')">시스템명 <i id="icon-sort-name" class="fa-solid fa-sort" style="color:var(--text-tertiary); margin-left:4px;"></i></th>
                             <th>접속 엔드포인트 (URL)</th>
                             <th>관리 액션</th>
                         </tr>
@@ -191,6 +195,20 @@
                 <div class="form-group">
                     <label>시스템 요약 설명</label>
                     <input type="text" id="form-description" placeholder="이 시스템의 주요 목적을 간단히 기재하세요.">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label>보안 잠금</label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin-top: 0.5rem; font-size: 0.95rem;">
+                            <input type="checkbox" id="form-is-locked" style="width: auto; margin:0;" onchange="togglePasswordField()"> 
+                            비밀번호 입력 요구 (특정 인원 전용)
+                        </label>
+                    </div>
+                    <div class="form-group" id="password-group" style="display: none; flex: 1;">
+                        <label>접속 접속 암호 <span class="required">*</span></label>
+                        <input type="text" id="form-app-password" placeholder="접속 시 요구할 암호">
+                    </div>
                 </div>
 
                 <div class="modal-actions">
