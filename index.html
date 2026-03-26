@@ -1,9 +1,12 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nature Hospital Smart Work Hub</title>
+    <title>NatureHospital SmartWork Hub</title>
+    <!-- 파비콘 (브라우저 탭 아이콘) -->
+    <link rel="icon" href="logo.png" type="image/png">
     <!-- Fonts -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
@@ -12,6 +15,7 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="dashboard-layout">
         <!-- Sidebar Navigation -->
@@ -100,7 +104,8 @@
             <h2>시스템 관리자 인증</h2>
             <p class="modal-desc">엔터프라이즈 환경 설정을 위한 권한이 필요합니다.</p>
             <div class="form-group">
-                <input type="password" id="admin-password" placeholder="비밀번호를 입력하세요" onkeypress="if(event.key === 'Enter') loginAdmin()">
+                <input type="password" id="admin-password" placeholder="비밀번호를 입력하세요"
+                    onkeypress="if(event.key === 'Enter') loginAdmin()">
             </div>
             <div class="modal-actions full-width">
                 <button class="btn btn-primary" onclick="loginAdmin()">인증하기</button>
@@ -116,12 +121,14 @@
                     <h2><i class="fa-solid fa-sliders"></i> 시스템 환경 설정</h2>
                     <p class="modal-desc">부서별 업무 웹앱 및 시스템 연결을 중앙에서 관리합니다.</p>
                 </div>
-                <button class="close-btn" onclick="closeModal('admin-dashboard-modal')"><i class="fa-solid fa-xmark"></i></button>
+                <button class="close-btn" onclick="closeModal('admin-dashboard-modal')"><i
+                        class="fa-solid fa-xmark"></i></button>
             </header>
-            
+
             <div class="admin-actions">
                 <div class="status-message" id="admin-status"></div>
-                <button class="btn btn-primary" onclick="openAppForm()"><i class="fa-solid fa-plus"></i> 새 시스템 등록</button>
+                <button class="btn btn-primary" onclick="openAppForm()"><i class="fa-solid fa-plus"></i> 새 시스템
+                    등록</button>
             </div>
 
             <div class="admin-table-container">
@@ -148,27 +155,28 @@
             <button class="close-btn" onclick="closeModal('app-form-modal')"><i class="fa-solid fa-xmark"></i></button>
             <h2 id="form-title">시스템 등록</h2>
             <p class="modal-desc">새로운 업무 시스템을 임직원 워크스페이스에 배포합니다.</p>
-            
+
             <form id="app-form" class="enterprise-form">
                 <input type="hidden" id="form-app-id">
-                
+
                 <div class="form-group">
                     <label>시스템명 <span class="required">*</span></label>
                     <input type="text" id="form-name" required placeholder="예: 직원 연차 통합관리">
                 </div>
-                
+
                 <div class="form-group">
                     <label>운영 URL <span class="required">*</span></label>
                     <input type="url" id="form-url" required placeholder="https://...">
                 </div>
-                
+
                 <div class="form-row">
                     <div class="form-group">
                         <label>카테고리 분류</label>
-                        <input type="text" id="form-category" list="category-list" placeholder="예: 일반, 인사 등 (직접 입력 가능)" required>
+                        <input type="text" id="form-category" list="category-list" placeholder="예: 일반, 인사 등 (직접 입력 가능)"
+                            required>
                         <datalist id="category-list"></datalist>
                     </div>
-                    
+
                     <div class="form-group">
                         <label>
                             시스템 아이콘 (아이덴티티)
@@ -195,4 +203,5 @@
 
     <script src="app.js"></script>
 </body>
+
 </html>
