@@ -1,0 +1,64 @@
+/* Supanova Design Engine - Warm Editorial Baseline CSS */
+:root {
+    --brand-gray: #404040;
+    --brand-yellow: #f2d79d;
+    --brand-green: #a2bb9c;
+    --brand-mint: #b1d6c2;
+    --brand-bg: #FDFBF7;
+}
+
+* {
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Luxury Minimalist Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #E8E4DD;
+    border-radius: 20px;
+}
+.custom-scrollbar:hover::-webkit-scrollbar-thumb {
+    background-color: #D1CFC9;
+}
+
+/* Staggered Scroll Reveals */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(1.5rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.break-keep-all {
+    word-break: keep-all;
+}
+
+/* Mobile Sidebar Slide in Override */
+.sidebar-open {
+    left: 0 !important;
+}
+
+@media screen and (max-width: 768px) {
+    input, select, textarea {
+        font-size: 16px !important;
+    }
+}
