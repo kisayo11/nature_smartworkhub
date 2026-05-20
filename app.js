@@ -323,12 +323,15 @@ function generateAppCard(app, index, isFavoriteItem = false) {
 
     if (viewMode === 'list' && !isFavoriteItem) {
         return `
-        <${closingTag} ${cardAction} class="${extraClasses} group block w-full rounded-[1.8rem] bg-white/40 border border-white hover:border-brand-green/30 transition-all duration-500 ease-out hover:-translate-y-0.5 hover:shadow-[0_15px_30px_rgba(0,0,0,0.03)] relative animate-fade-in-up ${!isActive ? 'opacity-60 grayscale cursor-not-allowed hover:shadow-none hover:border-white' : 'cursor-pointer shadow-[0_4px_20px_rgba(0,0,0,0.02)] backdrop-blur-md'}" style="animation-delay: ${index * 40}ms; opacity: 0; outline: none;">
+        <div class="${extraClasses} group block w-full rounded-[1.8rem] bg-white/40 border border-white hover:border-brand-green/30 transition-all duration-500 ease-out hover:-translate-y-0.5 hover:shadow-[0_15px_30px_rgba(0,0,0,0.03)] relative animate-fade-in-up ${!isActive ? 'opacity-60 grayscale hover:shadow-none hover:border-white' : 'shadow-[0_4px_20px_rgba(0,0,0,0.02)] backdrop-blur-md'}" style="animation-delay: ${index * 40}ms; opacity: 0; outline: none;">
             
             <!-- Double Bezel Inner Core -->
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between rounded-[calc(1.8rem-1px)] bg-gradient-to-br from-white/95 via-white/80 to-zinc-50/50 p-5 sm:p-6 gap-4 sm:gap-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between rounded-[calc(1.8rem-1px)] bg-gradient-to-br from-white/95 via-white/80 to-zinc-50/50 p-5 sm:p-6 gap-4 sm:gap-6 relative z-0">
                 
-                <div class="flex items-center gap-5 flex-1 min-w-0 pr-24">
+                <!-- Action Overlay -->
+                <${closingTag} ${cardAction} class="absolute inset-0 z-10 rounded-[calc(1.8rem-1px)] ${!isActive ? 'cursor-not-allowed' : 'cursor-pointer'}" aria-label="${app.name} 이동"></${closingTag}>
+                
+                <div class="flex items-center gap-5 flex-1 min-w-0 pr-24 pointer-events-none">
                     <!-- Premium Icon Box -->
                     <div class="w-12 h-12 rounded-[1rem] shrink-0 ${theme.bg} ${theme.text} flex items-center justify-center text-[1.8rem] group-hover:scale-[1.08] group-hover:rotate-2 transition-transform duration-500 ease-out shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_4px_12px_rgba(0,0,0,0.03)] border border-white">
                         <iconify-icon icon="${app.icon || 'solar:link-circle-bold-duotone'}"></iconify-icon>
@@ -346,7 +349,7 @@ function generateAppCard(app, index, isFavoriteItem = false) {
                 </div>
                 
                 <!-- Action Controls Toolbar -->
-                <div class="flex items-center justify-end gap-3 shrink-0 border-t border-zinc-100 sm:border-0 pt-3 sm:pt-0 mr-12">
+                <div class="flex items-center justify-end gap-3 shrink-0 border-t border-zinc-100 sm:border-0 pt-3 sm:pt-0 mr-12 pointer-events-none">
                     ${isActive && !isLocked ? '<div class="w-8 h-8 rounded-full bg-white shadow-sm border border-zinc-100 flex items-center justify-center text-zinc-400 group-hover:text-brand-green group-hover:bg-zinc-50 transition-colors duration-300"><iconify-icon icon="solar:arrow-right-up-linear" class="text-base"></iconify-icon></div>' : ''}
                 </div>
                 
@@ -354,18 +357,21 @@ function generateAppCard(app, index, isFavoriteItem = false) {
                 ${favoriteButton}
                 
             </div>
-        </${closingTag}>
+        </div>
         `;
     }
 
     // Grid layout (applied also in Favorites drawer for aesthetic uniformity)
     return `
-    <${closingTag} ${cardAction} class="${extraClasses} group block h-full rounded-[2.2rem] bg-white/40 border border-white hover:border-brand-green/30 transition-all duration-500 ease-out hover:-translate-y-2 hover:shadow-[0_30px_60px_-15px_rgba(134,167,137,0.25)] relative animate-fade-in-up ${!isActive ? 'opacity-60 grayscale cursor-not-allowed hover:translate-y-0 hover:shadow-none hover:border-white' : 'cursor-pointer shadow-[0_8px_30px_rgba(0,0,0,0.04)] backdrop-blur-md'}" style="animation-delay: ${index * 60}ms; opacity: 0; outline: none;">
+    <div class="${extraClasses} group block h-full rounded-[2.2rem] bg-white/40 border border-white hover:border-brand-green/30 transition-all duration-500 ease-out hover:-translate-y-2 hover:shadow-[0_30px_60px_-15px_rgba(134,167,137,0.25)] relative animate-fade-in-up ${!isActive ? 'opacity-60 grayscale hover:translate-y-0 hover:shadow-none hover:border-white' : 'shadow-[0_8px_30px_rgba(0,0,0,0.04)] backdrop-blur-md'}" style="animation-delay: ${index * 60}ms; opacity: 0; outline: none;">
+        
+        <!-- Action Overlay -->
+        <${closingTag} ${cardAction} class="absolute inset-0 z-10 rounded-[2.2rem] ${!isActive ? 'cursor-not-allowed' : 'cursor-pointer'}" aria-label="${app.name} 이동"></${closingTag}>
         
         <!-- Double Bezel Inner Core - Forced to fill height -->
-        <div class="flex flex-col h-full rounded-[calc(2.2rem-1px)] bg-gradient-to-br from-white/90 via-white/70 to-zinc-50/50 shadow-[inset_0_1px_2px_rgba(255,255,255,1)] p-8">
+        <div class="flex flex-col h-full rounded-[calc(2.2rem-1px)] bg-gradient-to-br from-white/90 via-white/70 to-zinc-50/50 shadow-[inset_0_1px_2px_rgba(255,255,255,1)] p-8 relative z-0">
             
-            <div class="flex items-start justify-between mb-8 pr-20">
+            <div class="flex items-start justify-between mb-8 pr-20 pointer-events-none">
                 <!-- Premium Icon Box -->
                 <div class="w-16 h-16 rounded-[1.3rem] ${theme.bg} ${theme.text} flex items-center justify-center text-[2.2rem] group-hover:scale-[1.1] group-hover:rotate-3 transition-transform duration-500 ease-out shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_4px_12px_rgba(0,0,0,0.05)] border border-white">
                     <iconify-icon icon="${app.icon || 'solar:link-circle-bold-duotone'}"></iconify-icon>
@@ -375,7 +381,7 @@ function generateAppCard(app, index, isFavoriteItem = false) {
             ${reorderButtons}
             ${favoriteButton}
             
-            <div class="mt-auto flex flex-col flex-1">
+            <div class="mt-auto flex flex-col flex-1 pointer-events-none">
                 <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
                     <div class="text-[0.65rem] font-extrabold text-zinc-400 tracking-[0.2em] uppercase drop-shadow-sm">${catName}</div>
                     ${clicks[app.id] ? `<div class="flex items-center gap-1 text-[0.65rem] font-bold text-brand-green bg-brand-green/10 border border-brand-green/20 px-2 py-0.5 rounded-md"><iconify-icon icon="solar:fire-bold"></iconify-icon> ${clicks[app.id]}회</div>` : ''}
@@ -394,7 +400,7 @@ function generateAppCard(app, index, isFavoriteItem = false) {
             </div>
             
         </div>
-    </${closingTag}>
+    </div>
     `;
 }
 
