@@ -84,8 +84,8 @@ async function fetchApps() {
 
         if (result.status === 'success') {
             appsData = result.data.sort((a, b) => {
-                const nameA = a.name || '';
-                const nameB = b.name || '';
+                const nameA = (a.name || '').toString();
+                const nameB = (b.name || '').toString();
                 return nameA.localeCompare(nameB, 'ko-KR');
             });
             renderCategories();
