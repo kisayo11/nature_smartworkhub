@@ -165,12 +165,24 @@
             <div class="flex-1 overflow-y-auto px-8 py-4 lg:px-16 lg:py-6 custom-scrollbar scroll-smooth">
                 <div class="max-w-[1400px] mx-auto w-full">
                     
-                    <div class="mb-14 animate-fade-in-up flex justify-between items-end gap-4 flex-wrap">
+                    <div class="mb-14 animate-fade-in-up flex justify-between items-end gap-6 flex-wrap">
                         <div>
                             <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-green/10 border border-brand-green/20 text-brand-green text-[0.7rem] font-bold tracking-widest uppercase mb-4">
                                 <iconify-icon icon="solar:stars-minimalistic-bold-duotone"></iconify-icon> Workspace Hub
                             </div>
                             <h2 id="current-category-title" class="text-4xl md:text-5xl lg:text-[3.5rem] font-extrabold text-zinc-900 tracking-tighter leading-tight drop-shadow-sm">전체 시스템</h2>
+                        </div>
+                        
+                        <!-- Premium View Mode Toggle Capsule -->
+                        <div class="flex items-center gap-1 bg-white/60 backdrop-blur-md border border-white p-1 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.02)] transition-all duration-300">
+                            <button id="view-grid-btn" onclick="setViewMode('grid')" class="flex items-center gap-2 px-4 py-2.5 rounded-full text-[0.85rem] font-bold transition-all duration-300" title="카드형으로 보기">
+                                <iconify-icon icon="solar:widget-bold-duotone" class="text-lg"></iconify-icon>
+                                <span class="hidden sm:inline">카드형</span>
+                            </button>
+                            <button id="view-list-btn" onclick="setViewMode('list')" class="flex items-center gap-2 px-4 py-2.5 rounded-full text-[0.85rem] font-bold transition-all duration-300" title="리스트형으로 보기">
+                                <iconify-icon icon="solar:list-bold-duotone" class="text-lg"></iconify-icon>
+                                <span class="hidden sm:inline">리스트형</span>
+                            </button>
                         </div>
                     </div>
 

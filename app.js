@@ -44,9 +44,32 @@ function initClock() {
     setInterval(updateTime, 1000);
 }
 
+// Premium View Mode Toggle Logic
+function updateViewToggleButtons() {
+    const gridBtn = document.getElementById('view-grid-btn');
+    const listBtn = document.getElementById('view-list-btn');
+    if (!gridBtn || !listBtn) return;
+
+    if (viewMode === 'grid') {
+        gridBtn.className = "flex items-center gap-2 px-4 py-2.5 rounded-full text-[0.85rem] font-bold transition-all duration-300 bg-zinc-900 text-white shadow-md shadow-zinc-900/10";
+        listBtn.className = "flex items-center gap-2 px-4 py-2.5 rounded-full text-[0.85rem] font-bold transition-all duration-300 text-zinc-400 hover:text-zinc-800 hover:bg-white/50";
+    } else {
+        gridBtn.className = "flex items-center gap-2 px-4 py-2.5 rounded-full text-[0.85rem] font-bold transition-all duration-300 text-zinc-400 hover:text-zinc-800 hover:bg-white/50";
+        listBtn.className = "flex items-center gap-2 px-4 py-2.5 rounded-full text-[0.85rem] font-bold transition-all duration-300 bg-zinc-900 text-white shadow-md shadow-zinc-900/10";
+    }
+}
+
+window.setViewMode = function(mode) {
+    viewMode = mode;
+    localStorage.setItem('hub-view-mode', mode);
+    updateViewToggleButtons();
+    renderApps();
+};
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     initClock();
+    updateViewToggleButtons();
     if (!SCRIPT_URL) {
         showError(`초기 설정이 필요합니다. Code.gs를 배포하고 app.js 상단에 SCRIPT_URL을 입력하세요.`);
         return;
@@ -171,6 +194,12 @@ function renderApps() {
         return;
     }
 
+    if (viewMode === 'grid') {
+        appsGrid.className = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6";
+    } else {
+        appsGrid.className = "flex flex-col gap-4 w-full animate-fade-in-up";
+    }
+
     appsGrid.innerHTML = filteredApps.map((app, index) => {
         const catName = app.category || '일반';
         
@@ -212,6 +241,38 @@ function renderApps() {
             cardAction = `href="${app.url}" target="_blank"`;
             extraClasses = 'focus:outline-none';
             closingTag = 'a';
+        }
+
+        if (viewMode === 'list') {
+            return `
+            <${closingTag} ${cardAction} class="${extraClasses} group block w-full rounded-[1.8rem] bg-white/40 border border-white hover:border-brand-green/30 transition-all duration-500 ease-out hover:-translate-y-0.5 hover:shadow-[0_15px_30px_rgba(0,0,0,0.03)] relative animate-fade-in-up ${!isActive ? 'opacity-60 grayscale cursor-not-allowed hover:shadow-none hover:border-white' : 'cursor-pointer shadow-[0_4px_20px_rgba(0,0,0,0.02)] backdrop-blur-md'}" style="animation-delay: ${index * 40}ms; opacity: 0; outline: none;">
+                
+                <!-- Double Bezel Inner Core -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between rounded-[calc(1.8rem-1px)] bg-gradient-to-br from-white/95 via-white/80 to-zinc-50/50 p-5 sm:p-6 gap-4 sm:gap-6">
+                    
+                    <div class="flex items-center gap-5 flex-1 min-w-0">
+                        <!-- Premium Icon Box -->
+                        <div class="w-12 h-12 rounded-[1rem] shrink-0 ${theme.bg} ${theme.text} flex items-center justify-center text-[1.8rem] group-hover:scale-[1.08] group-hover:rotate-2 transition-transform duration-500 ease-out shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_4px_12px_rgba(0,0,0,0.03)] border border-white">
+                            <iconify-icon icon="${app.icon || 'solar:link-circle-bold-duotone'}"></iconify-icon>
+                        </div>
+                        
+                        <div class="flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mb-1">
+                                <h3 class="font-extrabold text-zinc-900 text-[1.1rem] tracking-tight leading-tight">${app.name}</h3>
+                                <span class="inline-block text-[0.6rem] font-extrabold text-zinc-400 tracking-[0.15em] uppercase px-2 py-0.5 rounded bg-zinc-100/50 border border-zinc-200/30">${catName}</span>
+                            </div>
+                            <p class="text-[0.85rem] text-zinc-500 font-medium line-clamp-1 leading-relaxed">${app.description || '시스템에 대한 설명이 없습니다.'}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t border-zinc-100 sm:border-0 pt-3 sm:pt-0">
+                        ${badgesContainer}
+                        ${isActive && !isLocked ? '<div class="w-8 h-8 rounded-full bg-white shadow-sm border border-zinc-100 flex items-center justify-center text-zinc-400 group-hover:text-brand-green group-hover:bg-zinc-50 transition-colors duration-300"><iconify-icon icon="solar:arrow-right-up-linear" class="text-base"></iconify-icon></div>' : ''}
+                    </div>
+                    
+                </div>
+            </${closingTag}>
+            `;
         }
 
         // Apply h-full so all cards in the grid row stretch identically (No missing teeth!)
