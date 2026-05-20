@@ -5,6 +5,7 @@ let appsData = [];
 let isAdmin = false;
 let currentCategory = 'All';
 let searchQuery = '';
+let viewMode = localStorage.getItem('hub-view-mode') || 'grid';
 
 // DOM Elements
 const loadingEl = document.getElementById('loading');
