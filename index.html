@@ -153,7 +153,18 @@
                     </div>
                 </div>
 
-                <div class="hidden md:flex items-center gap-10">
+                <div class="hidden md:flex items-center gap-6">
+                    <!-- Premium Theme Customizer Selector Capsule -->
+                    <div class="flex items-center gap-2 bg-white/60 backdrop-blur-md border border-white pl-4 pr-2 py-1.5 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.02)] transition-all duration-300">
+                        <iconify-icon icon="solar:palette-bold-duotone" class="text-zinc-400 text-lg"></iconify-icon>
+                        <select id="theme-selector" onchange="setTheme(this.value)" class="bg-transparent border-0 text-[0.85rem] font-extrabold text-zinc-600 focus:outline-none focus:ring-0 cursor-pointer pr-1">
+                            <option value="classic">기본 네이처 테마</option>
+                            <option value="aurora">미드나잇 오로라 (다크)</option>
+                            <option value="cyber">사이버 민트 (다크)</option>
+                            <option value="nordic">노르딕 스노우 (라이트)</option>
+                        </select>
+                    </div>
+
                     <div class="flex flex-col items-end">
                         <div id="current-time" class="text-[1.3rem] font-extrabold text-zinc-800 tracking-tight leading-none mb-1 drop-shadow-sm">00:00</div>
                         <div id="current-date" class="text-[0.75rem] font-bold text-brand-green tracking-widest uppercase">YYYY.MM.DD</div>
@@ -173,16 +184,37 @@
                             <h2 id="current-category-title" class="text-4xl md:text-5xl lg:text-[3.5rem] font-extrabold text-zinc-900 tracking-tighter leading-tight drop-shadow-sm">전체 시스템</h2>
                         </div>
                         
-                        <!-- Premium View Mode Toggle Capsule -->
-                        <div class="flex items-center gap-1 bg-white/60 backdrop-blur-md border border-white p-1 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.02)] transition-all duration-300">
-                            <button id="view-grid-btn" onclick="setViewMode('grid')" class="flex items-center gap-2 px-4 py-2.5 rounded-full text-[0.85rem] font-bold transition-all duration-300" title="카드형으로 보기">
-                                <iconify-icon icon="solar:widget-bold-duotone" class="text-lg"></iconify-icon>
-                                <span class="hidden sm:inline">카드형</span>
-                            </button>
-                            <button id="view-list-btn" onclick="setViewMode('list')" class="flex items-center gap-2 px-4 py-2.5 rounded-full text-[0.85rem] font-bold transition-all duration-300" title="리스트형으로 보기">
-                                <iconify-icon icon="solar:list-bold-duotone" class="text-lg"></iconify-icon>
-                                <span class="hidden sm:inline">리스트형</span>
-                            </button>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <!-- Premium Dynamic Sorting Capsule -->
+                            <div class="flex items-center gap-2 bg-white/60 backdrop-blur-md border border-white pl-4 pr-2 py-1.5 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.02)] transition-all duration-300">
+                                <iconify-icon icon="solar:sort-vertical-bold-duotone" class="text-zinc-400 text-lg"></iconify-icon>
+                                <select id="sort-selector" onchange="setSortBy(this.value)" class="bg-transparent border-0 text-[0.85rem] font-extrabold text-zinc-600 focus:outline-none focus:ring-0 cursor-pointer pr-1">
+                                    <option value="name">이름순 (가나다)</option>
+                                    <option value="recency">최근 등록순</option>
+                                    <option value="popularity">인기순 (클릭수)</option>
+                                    <option value="custom">내 맞춤 순서</option>
+                                </select>
+                            </div>
+
+                            <!-- Premium Interactive Reorder Activator -->
+                            <div id="reorder-toggle-container" class="hidden flex items-center gap-1 bg-white/60 backdrop-blur-md border border-white p-1 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.02)] transition-all duration-300">
+                                <button id="reorder-toggle-btn" onclick="toggleReorderMode()" class="flex items-center gap-2 px-4 py-2 rounded-full text-[0.85rem] font-extrabold transition-all duration-300 text-zinc-400 hover:text-zinc-800 hover:bg-white/50" title="배치 변경 모드 토글">
+                                    <iconify-icon icon="solar:sort-by-time-bold-duotone" class="text-lg"></iconify-icon>
+                                    <span>순서 편집</span>
+                                </button>
+                            </div>
+
+                            <!-- Premium View Mode Toggle Capsule -->
+                            <div class="flex items-center gap-1 bg-white/60 backdrop-blur-md border border-white p-1 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.02)] transition-all duration-300">
+                                <button id="view-grid-btn" onclick="setViewMode('grid')" class="flex items-center gap-2 px-4 py-2.5 rounded-full text-[0.85rem] font-bold transition-all duration-300" title="카드형으로 보기">
+                                    <iconify-icon icon="solar:widget-bold-duotone" class="text-lg"></iconify-icon>
+                                    <span class="hidden sm:inline">카드형</span>
+                                </button>
+                                <button id="view-list-btn" onclick="setViewMode('list')" class="flex items-center gap-2 px-4 py-2.5 rounded-full text-[0.85rem] font-bold transition-all duration-300" title="리스트형으로 보기">
+                                    <iconify-icon icon="solar:list-bold-duotone" class="text-lg"></iconify-icon>
+                                    <span class="hidden sm:inline">리스트형</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -194,9 +226,26 @@
                         <p class="font-bold tracking-wide text-zinc-500 text-lg">워크스페이스 동기화 중...</p>
                     </div>
 
+                    <!-- Pinned Favorites Drawer -->
+                    <div id="favorites-container" class="hidden mb-12 w-full animate-fade-in-up">
+                        <div class="flex items-center gap-2.5 mb-6">
+                            <iconify-icon icon="solar:star-bold-duotone" class="text-brand-yellow text-2xl drop-shadow-[0_2px_8px_rgba(242,215,157,0.4)]"></iconify-icon>
+                            <h3 class="text-[0.85rem] font-extrabold text-zinc-400 tracking-widest uppercase">즐겨찾는 시스템</h3>
+                        </div>
+                        <div id="favorites-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            <!-- Pinned cards injected by JS -->
+                        </div>
+                        <div class="w-full h-px bg-gradient-to-r from-zinc-200/50 via-zinc-100 to-transparent my-10"></div>
+                    </div>
+
                     <!-- Apps Grid (CSS Grid without auto-rows-max so it stretches evenly!) -->
                     <div id="apps-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         <!-- Cards injected by JS -->
+                    </div>
+
+                    <!-- Premium Glassmorphic Pagination Capsule -->
+                    <div id="pagination-container" class="flex justify-center items-center mt-12 mb-6">
+                        <!-- Buttons injected by JS -->
                     </div>
                 </div>
                 
@@ -248,14 +297,25 @@
             </div>
 
             <div class="flex-1 flex flex-col min-h-0 bg-white/40">
-                <div class="px-10 py-5 flex justify-between items-center border-b border-zinc-200/50">
-                    <div id="admin-status" class="text-[0.9rem] font-bold"></div>
-                    <button onclick="openAppForm()" class="rounded-full bg-zinc-900 text-white font-bold py-3.5 px-8 flex items-center gap-3 hover:bg-black transition-all duration-300 hover:shadow-[0_10px_20px_rgba(0,0,0,0.15)] hover:-translate-y-1 active:scale-[0.98]">
-                        <iconify-icon icon="solar:add-square-bold-duotone" class="text-2xl"></iconify-icon> 새 시스템 배포
+                <!-- Administrative Sliding Tabs -->
+                <div class="px-10 border-b border-zinc-200/60 flex gap-6 bg-white/30 shrink-0">
+                    <button id="tab-registry-btn" onclick="switchAdminTab('registry')" class="py-4 text-[0.95rem] font-extrabold border-b-2 border-zinc-900 text-zinc-900 transition-all duration-300 focus:outline-none">
+                        시스템 등록 관리
+                    </button>
+                    <button id="tab-analytics-btn" onclick="switchAdminTab('analytics')" class="py-4 text-[0.95rem] font-bold border-b-2 border-transparent text-zinc-400 hover:text-zinc-700 transition-all duration-300 focus:outline-none">
+                        사용 통계 분석
                     </button>
                 </div>
 
-                <div class="flex-1 overflow-y-auto w-full custom-scrollbar p-8">
+                <div id="admin-status-bar" class="px-10 py-3 flex justify-between items-center border-b border-zinc-200/50 bg-white/10 shrink-0">
+                    <div id="admin-status" class="text-[0.9rem] font-bold"></div>
+                    <button id="admin-add-app-btn" onclick="openAppForm()" class="rounded-full bg-zinc-900 text-white font-bold py-2.5 px-6 flex items-center gap-2 hover:bg-black transition-all duration-300 hover:shadow-[0_10px_20px_rgba(0,0,0,0.15)] hover:-translate-y-0.5 active:scale-[0.98] text-[0.85rem]">
+                        <iconify-icon icon="solar:add-square-bold-duotone" class="text-xl"></iconify-icon> 새 시스템 배포
+                    </button>
+                </div>
+
+                <!-- Tab 1: Registry Table View -->
+                <div id="admin-registry-view" class="flex-1 overflow-y-auto w-full custom-scrollbar p-8">
                     <table class="w-full text-left border-separate border-spacing-y-2">
                         <thead>
                             <tr>
@@ -269,6 +329,50 @@
                             <!-- List -->
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Tab 2: Native Usage Analytics Panel -->
+                <div id="admin-analytics-view" class="hidden flex-1 overflow-y-auto w-full custom-scrollbar p-8 space-y-8 animate-fade-in-up">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Stats Card 1 -->
+                        <div class="bg-white/60 border border-white p-6 rounded-3xl shadow-sm backdrop-blur-md">
+                            <div class="flex items-center justify-between mb-4">
+                                <span class="text-[0.75rem] font-extrabold text-zinc-400 uppercase tracking-wider">총 배포 모듈</span>
+                                <iconify-icon icon="solar:server-bold-duotone" class="text-brand-green text-2xl"></iconify-icon>
+                            </div>
+                            <div id="stats-total-apps" class="text-3xl font-extrabold text-zinc-900">0개</div>
+                            <p class="text-[0.75rem] text-zinc-400 font-medium mt-2">병원 통합 활성 워크스페이스 수</p>
+                        </div>
+                        <!-- Stats Card 2 -->
+                        <div class="bg-white/60 border border-white p-6 rounded-3xl shadow-sm backdrop-blur-md">
+                            <div class="flex items-center justify-between mb-4">
+                                <span class="text-[0.75rem] font-extrabold text-zinc-400 uppercase tracking-wider">총 시스템 클릭</span>
+                                <iconify-icon icon="solar:fire-bold-duotone" class="text-brand-yellow text-2xl"></iconify-icon>
+                            </div>
+                            <div id="stats-total-clicks" class="text-3xl font-extrabold text-zinc-900">0회</div>
+                            <p class="text-[0.75rem] text-zinc-400 font-medium mt-2">구성원 전체 업무 접속 총량</p>
+                        </div>
+                        <!-- Stats Card 3 -->
+                        <div class="bg-white/60 border border-white p-6 rounded-3xl shadow-sm backdrop-blur-md">
+                            <div class="flex items-center justify-between mb-4">
+                                <span class="text-[0.75rem] font-extrabold text-zinc-400 uppercase tracking-wider">최대 인기 카테고리</span>
+                                <iconify-icon icon="solar:stars-minimalistic-bold-duotone" class="text-brand-mint text-2xl"></iconify-icon>
+                            </div>
+                            <div id="stats-hot-category" class="text-3xl font-extrabold text-zinc-900">-</div>
+                            <p class="text-[0.75rem] text-zinc-400 font-medium mt-2">최다 트래픽 부서/분류 영역</p>
+                        </div>
+                    </div>
+
+                    <!-- Usage Analytics Chart Box -->
+                    <div class="bg-white/80 border border-white p-8 rounded-[2rem] shadow-sm backdrop-blur-md">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="w-2.5 h-6 bg-brand-green rounded-full"></div>
+                            <h3 class="text-lg font-extrabold text-zinc-800">시스템별 이용 빈도 랭킹 (Top Click Counts)</h3>
+                        </div>
+                        <div id="analytics-chart-container" class="space-y-6">
+                            <!-- Native Progress Bar Chart injected by JS -->
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -353,6 +457,32 @@
                     </button>
                 </div>
             </form>
+        </div>
+    <!-- Spotlight Command Palette Modal -->
+    <div id="command-palette" class="hidden fixed inset-0 z-[110] items-start justify-center p-4 pt-[15vh] transition-all duration-300 opacity-0 data-[show=true]:opacity-100 data-[show=true]:flex">
+        <div class="absolute inset-0 bg-zinc-950/40 backdrop-blur-md" onclick="closeCommandPalette()"></div>
+        <div class="bg-white/80 backdrop-blur-2xl rounded-[2.5rem] w-full max-w-2xl shadow-[0_50px_100px_rgba(0,0,0,0.15)] border border-white/80 flex flex-col relative max-h-[60vh] overflow-hidden transform scale-95 transition-transform duration-300 data-[show=true]:scale-100 z-10">
+            
+            <!-- Search Header -->
+            <div class="p-6 border-b border-zinc-200/60 flex items-center gap-4 bg-white/40">
+                <iconify-icon icon="solar:magnifer-linear" class="text-zinc-400 text-2xl shrink-0"></iconify-icon>
+                <input type="text" id="palette-search-input" placeholder="시스템 명칭, 카테고리, 설명 검색..." autocomplete="off" class="w-full bg-transparent text-xl font-bold text-zinc-900 placeholder:text-zinc-400 focus:outline-none">
+                <button onclick="closeCommandPalette()" class="text-zinc-400 hover:text-zinc-800 transition-colors p-1.5 rounded-full"><iconify-icon icon="solar:close-circle-bold-duotone" class="text-2.5xl"></iconify-icon></button>
+            </div>
+
+            <!-- Results List -->
+            <div id="palette-results" class="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-1">
+                <!-- Dynamically populated by JS -->
+            </div>
+
+            <!-- Palette Footer Keyboard Badge Helper -->
+            <div class="px-6 py-4 bg-zinc-50/80 border-t border-zinc-200/50 flex justify-between items-center text-[0.75rem] font-bold text-zinc-400">
+                <div class="flex items-center gap-4">
+                    <span class="flex items-center gap-1.5"><kbd class="bg-white border border-zinc-200 px-2 py-0.5 rounded shadow-sm">↑↓</kbd> 이동</span>
+                    <span class="flex items-center gap-1.5"><kbd class="bg-white border border-zinc-200 px-2 py-0.5 rounded shadow-sm">Enter</kbd> 실행</span>
+                </div>
+                <span class="flex items-center gap-1.5"><kbd class="bg-white border border-zinc-200 px-2 py-0.5 rounded shadow-sm">ESC</kbd> 닫기</span>
+            </div>
         </div>
     </div>
 
