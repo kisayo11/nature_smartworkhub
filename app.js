@@ -255,29 +255,30 @@ function generateAppCard(app, index, isFavoriteItem = false) {
     const isActive = app.isActive !== false && app.isActive !== 'FALSE' && app.isActive !== 'false';
     const isFav = favorites.includes(app.id);
 
+    // absolute positioning for top-right toolbar on cards
     const favoriteButton = `
-        <button onclick="window.toggleFavorite('${app.id}', event)" class="w-9 h-9 rounded-full bg-white/80 backdrop-blur-md shadow-sm border border-zinc-100/80 flex items-center justify-center text-zinc-400 hover:text-brand-yellow hover:scale-105 active:scale-95 transition-all duration-300 z-20" title="${isFav ? '즐겨찾기 해제' : '즐겨찾기 등록'}">
+        <button onclick="window.toggleFavorite('${app.id}', event)" class="w-9 h-9 rounded-full bg-white/80 dark:bg-zinc-800/80 backdrop-blur-md shadow-sm border border-zinc-100/80 dark:border-zinc-700/50 flex items-center justify-center text-zinc-400 hover:text-brand-yellow hover:scale-105 active:scale-95 transition-all duration-300 z-20 absolute top-5 ${sortBy === 'custom' && reorderModeActive && !isFavoriteItem ? 'right-16' : 'right-5'}" title="${isFav ? '즐겨찾기 해제' : '즐겨찾기 등록'}">
             <iconify-icon icon="${isFav ? 'solar:star-bold' : 'solar:star-linear'}" class="${isFav ? 'text-brand-yellow' : 'text-zinc-400'} text-[1.1rem]"></iconify-icon>
         </button>
     `;
     
-    const lockBadge = isLocked ? `<div class="px-2.5 py-1 rounded-md bg-white/80 shadow-sm text-[#FF6B6B] flex items-center gap-1.5 border border-[#FFEAEA] backdrop-blur-md"><iconify-icon icon="solar:lock-keyhole-bold-duotone" class="text-[0.85rem]"></iconify-icon><span class="text-[0.65rem] font-bold tracking-widest uppercase mt-px">Secured</span></div>` : '';
-    const inactiveBadge = !isActive ? `<div class="px-2.5 py-1 rounded-md bg-zinc-100/80 shadow-sm text-zinc-500 flex items-center gap-1.5 border border-zinc-200 backdrop-blur-md"><iconify-icon icon="solar:forbidden-circle-bold-duotone" class="text-[0.85rem]"></iconify-icon><span class="text-[0.65rem] font-bold tracking-widest uppercase mt-px">Offline</span></div>` : '';
+    const lockBadge = isLocked ? `<div class="px-2 py-0.5 rounded-md bg-white/80 dark:bg-zinc-800/80 shadow-sm text-[#FF6B6B] flex items-center gap-1 border border-[#FFEAEA] dark:border-red-950/30 backdrop-blur-md shrink-0"><iconify-icon icon="solar:lock-keyhole-bold-duotone" class="text-[0.75rem]"></iconify-icon><span class="text-[0.6rem] font-extrabold tracking-wider uppercase mt-px">Secured</span></div>` : '';
+    const inactiveBadge = !isActive ? `<div class="px-2 py-0.5 rounded-md bg-zinc-100/80 dark:bg-zinc-800/60 shadow-sm text-zinc-500 flex items-center gap-1 border border-zinc-200 dark:border-zinc-700/30 backdrop-blur-md shrink-0"><iconify-icon icon="solar:forbidden-circle-bold-duotone" class="text-[0.75rem]"></iconify-icon><span class="text-[0.6rem] font-extrabold tracking-wider uppercase mt-px">Offline</span></div>` : '';
     
     // Live Status Health Checker Badge
     const pingStatus = pingStatuses[app.id] || 'checking';
     let pingBadge = '';
     if (isActive) {
         if (pingStatus === 'checking') {
-            pingBadge = `<div data-ping-app-id="${app.id}" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-500 border border-zinc-200 text-[0.65rem] font-bold"><iconify-icon icon="solar:spinner-track-bold-duotone" class="animate-spin text-[0.75rem]"></iconify-icon> Checking</div>`;
+            pingBadge = `<div data-ping-app-id="${app.id}" class="flex items-center gap-1 px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/60 text-zinc-500 border border-zinc-200 dark:border-zinc-700/30 text-[0.6rem] font-extrabold shrink-0"><iconify-icon icon="solar:spinner-track-bold-duotone" class="animate-spin text-[0.7rem]"></iconify-icon> Checking</div>`;
         } else if (pingStatus === 'online') {
-            pingBadge = `<div data-ping-app-id="${app.id}" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#E3EFE8] text-brand-green border border-brand-green/20 text-[0.65rem] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-brand-green animate-pulse"></span> Online</div>`;
+            pingBadge = `<div data-ping-app-id="${app.id}" class="flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#E3EFE8] dark:bg-green-950/20 text-brand-green border border-brand-green/20 text-[0.6rem] font-extrabold shrink-0"><span class="w-1.5 h-1.5 rounded-full bg-brand-green animate-pulse"></span> Online</div>`;
         } else {
-            pingBadge = `<div data-ping-app-id="${app.id}" class="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#FFF5F5] text-red-500 border border-red-200 text-[0.65rem] font-bold"><span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span> Offline</div>`;
+            pingBadge = `<div data-ping-app-id="${app.id}" class="flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#FFF5F5] dark:bg-red-950/20 text-red-500 border border-red-200 dark:border-red-900/20 text-[0.6rem] font-extrabold shrink-0"><span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span> Offline</div>`;
         }
     }
 
-    let badgesContainer = `<div class="flex gap-2">${lockBadge}${inactiveBadge}${pingBadge}</div>`;
+    let badgesContainer = (lockBadge || inactiveBadge || pingBadge) ? `<div class="flex items-center gap-1.5 flex-wrap">${lockBadge}${inactiveBadge}${pingBadge}</div>` : '';
 
     // Keyboard Shortcuts Alt + [1-9] Guideline
     const favIndex = favorites.indexOf(app.id);
@@ -290,11 +291,11 @@ function generateAppCard(app, index, isFavoriteItem = false) {
     let reorderButtons = '';
     if (sortBy === 'custom' && reorderModeActive && !isFavoriteItem) {
         reorderButtons = `
-            <div class="flex items-center gap-1 z-30 mr-1" onclick="event.stopPropagation();">
-                <button onclick="window.moveApp('${app.id}', 'prev', event)" class="w-8 h-8 rounded-full bg-white/90 border border-zinc-200 text-zinc-600 hover:bg-zinc-900 hover:text-white flex items-center justify-center transition-all shadow-sm active:scale-95" title="앞으로 이동">
+            <div class="flex items-center gap-1 z-30 absolute top-5 right-5" onclick="event.stopPropagation();">
+                <button onclick="window.moveApp('${app.id}', 'prev', event)" class="w-8 h-8 rounded-full bg-white/90 dark:bg-zinc-800/90 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-900 dark:hover:bg-white hover:text-white dark:hover:text-zinc-900 flex items-center justify-center transition-all shadow-sm active:scale-95" title="앞으로 이동">
                     <iconify-icon icon="solar:alt-arrow-left-line-duotone" class="text-sm"></iconify-icon>
                 </button>
-                <button onclick="window.moveApp('${app.id}', 'next', event)" class="w-8 h-8 rounded-full bg-white/90 border border-zinc-200 text-zinc-600 hover:bg-zinc-900 hover:text-white flex items-center justify-center transition-all shadow-sm active:scale-95" title="뒤로 이동">
+                <button onclick="window.moveApp('${app.id}', 'next', event)" class="w-8 h-8 rounded-full bg-white/90 dark:bg-zinc-800/90 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-900 dark:hover:bg-white hover:text-white dark:hover:text-zinc-900 flex items-center justify-center transition-all shadow-sm active:scale-95" title="뒤로 이동">
                     <iconify-icon icon="solar:alt-arrow-right-line-duotone" class="text-sm"></iconify-icon>
                 </button>
             </div>
@@ -327,28 +328,30 @@ function generateAppCard(app, index, isFavoriteItem = false) {
             <!-- Double Bezel Inner Core -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between rounded-[calc(1.8rem-1px)] bg-gradient-to-br from-white/95 via-white/80 to-zinc-50/50 p-5 sm:p-6 gap-4 sm:gap-6">
                 
-                <div class="flex items-center gap-5 flex-1 min-w-0">
+                <div class="flex items-center gap-5 flex-1 min-w-0 pr-24">
                     <!-- Premium Icon Box -->
                     <div class="w-12 h-12 rounded-[1rem] shrink-0 ${theme.bg} ${theme.text} flex items-center justify-center text-[1.8rem] group-hover:scale-[1.08] group-hover:rotate-2 transition-transform duration-500 ease-out shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_4px_12px_rgba(0,0,0,0.03)] border border-white">
                         <iconify-icon icon="${app.icon || 'solar:link-circle-bold-duotone'}"></iconify-icon>
                     </div>
                     
                     <div class="flex-1 min-w-0">
-                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mb-1">
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-1.5">
                             <h3 class="font-extrabold text-zinc-900 text-[1.1rem] tracking-tight leading-tight flex items-center gap-1.5">${app.name} ${shortcutBadge}</h3>
                             <span class="inline-block text-[0.6rem] font-extrabold text-zinc-400 tracking-[0.15em] uppercase px-2 py-0.5 rounded bg-zinc-100/50 border border-zinc-200/30">${catName}</span>
                             ${clicks[app.id] ? `<span class="inline-flex items-center gap-1 text-[0.6rem] font-bold text-brand-green bg-brand-green/10 border border-brand-green/20 px-1.5 py-0.5 rounded-md"><iconify-icon icon="solar:fire-bold"></iconify-icon> ${clicks[app.id]}</span>` : ''}
+                            ${badgesContainer}
                         </div>
                         <p class="text-[0.85rem] text-zinc-500 font-medium line-clamp-1 leading-relaxed">${app.description || '시스템에 대한 설명이 없습니다.'}</p>
                     </div>
                 </div>
                 
-                <div class="flex items-center justify-between sm:justify-end gap-3 shrink-0 border-t border-zinc-100 sm:border-0 pt-3 sm:pt-0">
-                    ${reorderButtons}
-                    ${favoriteButton}
-                    ${badgesContainer}
+                <!-- Action Controls Toolbar -->
+                <div class="flex items-center justify-end gap-3 shrink-0 border-t border-zinc-100 sm:border-0 pt-3 sm:pt-0 mr-12">
                     ${isActive && !isLocked ? '<div class="w-8 h-8 rounded-full bg-white shadow-sm border border-zinc-100 flex items-center justify-center text-zinc-400 group-hover:text-brand-green group-hover:bg-zinc-50 transition-colors duration-300"><iconify-icon icon="solar:arrow-right-up-linear" class="text-base"></iconify-icon></div>' : ''}
                 </div>
+                
+                ${reorderButtons}
+                ${favoriteButton}
                 
             </div>
         </${closingTag}>
@@ -362,28 +365,32 @@ function generateAppCard(app, index, isFavoriteItem = false) {
         <!-- Double Bezel Inner Core - Forced to fill height -->
         <div class="flex flex-col h-full rounded-[calc(2.2rem-1px)] bg-gradient-to-br from-white/90 via-white/70 to-zinc-50/50 shadow-[inset_0_1px_2px_rgba(255,255,255,1)] p-8">
             
-            <div class="flex items-start justify-between mb-8">
+            <div class="flex items-start justify-between mb-8 pr-20">
                 <!-- Premium Icon Box -->
                 <div class="w-16 h-16 rounded-[1.3rem] ${theme.bg} ${theme.text} flex items-center justify-center text-[2.2rem] group-hover:scale-[1.1] group-hover:rotate-3 transition-transform duration-500 ease-out shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_4px_12px_rgba(0,0,0,0.05)] border border-white">
                     <iconify-icon icon="${app.icon || 'solar:link-circle-bold-duotone'}"></iconify-icon>
                 </div>
-                <div class="flex flex-col items-end gap-2">
-                    ${reorderButtons}
-                    ${favoriteButton}
-                    ${badgesContainer}
-                </div>
             </div>
             
+            ${reorderButtons}
+            ${favoriteButton}
+            
             <div class="mt-auto flex flex-col flex-1">
-                <div class="flex items-center justify-between mb-2.5">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
                     <div class="text-[0.65rem] font-extrabold text-zinc-400 tracking-[0.2em] uppercase drop-shadow-sm">${catName}</div>
                     ${clicks[app.id] ? `<div class="flex items-center gap-1 text-[0.65rem] font-bold text-brand-green bg-brand-green/10 border border-brand-green/20 px-2 py-0.5 rounded-md"><iconify-icon icon="solar:fire-bold"></iconify-icon> ${clicks[app.id]}회</div>` : ''}
                 </div>
+                
                 <div class="flex items-center gap-3 mb-3">
                     <h3 class="font-extrabold text-zinc-900 text-[1.3rem] tracking-tight leading-tight flex-1 flex items-center gap-1.5 flex-wrap">${app.name} ${shortcutBadge}</h3>
-                    ${isActive && !isLocked ? '<div class="w-9 h-9 rounded-full bg-white shadow-sm border border-zinc-100 flex items-center justify-center opacity-0 -translate-x-3 translate-y-3 group-hover:opacity-100 group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-500 text-brand-green"><iconify-icon icon="solar:arrow-right-up-linear" class="text-lg"></iconify-icon></div>' : ''}
+                    ${isActive && !isLocked ? '<div class="w-9 h-9 rounded-full bg-white shadow-sm border border-zinc-100 flex items-center justify-center opacity-0 -translate-x-3 translate-y-3 group-hover:opacity-100 group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-500 text-brand-green shrink-0"><iconify-icon icon="solar:arrow-right-up-linear" class="text-lg"></iconify-icon></div>' : ''}
                 </div>
-                <p class="text-[0.95rem] text-zinc-500 leading-relaxed font-medium line-clamp-2">${app.description || '시스템에 대한 설명이 없습니다.'}</p>
+                
+                <p class="text-[0.95rem] text-zinc-500 leading-relaxed font-medium line-clamp-2 mb-4">${app.description || '시스템에 대한 설명이 없습니다.'}</p>
+                
+                <div class="mt-auto pt-2 border-t border-zinc-100/50">
+                    ${badgesContainer}
+                </div>
             </div>
             
         </div>
