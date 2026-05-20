@@ -79,7 +79,7 @@ if (searchInput) {
 // Fetch apps
 async function fetchApps() {
     try {
-        const response = await fetch(SCRIPT_URL);
+        const response = await fetch(SCRIPT_URL + '?_=' + new Date().getTime());
         const result = await response.json();
 
         if (result.status === 'success') {
