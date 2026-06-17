@@ -12,13 +12,17 @@ let currentPage = 1;
 let sortBy = localStorage.getItem('hub-sort-by') || 'name';
 let favorites = JSON.parse(localStorage.getItem('hub-favorites')) || [];
 let clicks = JSON.parse(localStorage.getItem('hub-clicks')) || {};
-let commandPaletteOpen = false;
-let selectedPaletteIndex = 0;
+
+// Integrated Search Dropdown State
+let searchDropdownOpen = false;
+let selectedSearchIndex = 0;
+let activeSearchApps = [];
 
 let currentTheme = localStorage.getItem('hub-theme') || 'classic';
 let reorderModeActive = false;
 let pingStatuses = {}; // format: { appId: 'checking' | 'online' | 'offline' }
 let customOrder = JSON.parse(localStorage.getItem('hub-custom-order')) || [];
+let collapsedSections = JSON.parse(localStorage.getItem('hub-collapsed-sections')) || {};
 
 // DOM Elements
 const loadingEl = document.getElementById('loading');
@@ -30,6 +34,10 @@ const adminStatus = document.getElementById('admin-status');
 const appForm = document.getElementById('app-form');
 
 const searchInput = document.getElementById('search-input');
+const searchContainer = document.getElementById('search-container');
+const searchDropdownPanel = document.getElementById('search-dropdown-panel');
+const searchDropdownList = document.getElementById('search-dropdown-list');
+
 const categoryNav = document.getElementById('category-nav');
 const currentCategoryTitle = document.getElementById('current-category-title');
 const timeEl = document.getElementById('current-time');
@@ -40,7 +48,7 @@ const mobileClose = document.getElementById('mobile-close');
 
 // Auto close sidebar when clicking outside on mobile
 document.addEventListener('click', (e) => {
-    if (window.innerWidth <= 768 && sidebar.classList.contains('sidebar-open')) {
+    if (window.innerWidth <= 768 && sidebar && sidebar.classList.contains('sidebar-open')) {
         if (!sidebar.contains(e.target) && !mobileMenuBtn.contains(e.target)) {
             sidebar.classList.remove('sidebar-open');
         }
@@ -58,41 +66,52 @@ function initClock() {
     setInterval(updateTime, 1000);
 }
 
-// Premium View Mode Toggle Logic
-function updateViewToggleButtons() {
-    const gridBtn = document.getElementById('view-grid-btn');
-    const listBtn = document.getElementById('view-list-btn');
-    if (!gridBtn || !listBtn) return;
+// Sliding Indicator Toggle Control Logic
+function updateSlidingToggles() {
+    // For sorting toggle group
+    const sortGroup = document.getElementById('sort-toggle-group');
+    const sortIndicator = document.getElementById('sort-indicator');
+    if (sortGroup && sortIndicator) {
+        const activeBtn = sortGroup.querySelector(`[data-value="${sortBy}"]`);
+        if (activeBtn) {
+            sortIndicator.style.width = `${activeBtn.offsetWidth}px`;
+            sortIndicator.style.left = `${activeBtn.offsetLeft}px`;
+            sortGroup.querySelectorAll('.toggle-tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn === activeBtn);
+            });
+        }
+    }
 
-    if (viewMode === 'grid') {
-        gridBtn.className = "flex items-center gap-2 px-4 py-2.5 rounded-full text-[0.85rem] font-bold transition-all duration-300 bg-zinc-900 text-white shadow-md shadow-zinc-900/10";
-        listBtn.className = "flex items-center gap-2 px-4 py-2.5 rounded-full text-[0.85rem] font-bold transition-all duration-300 text-zinc-400 hover:text-zinc-800 hover:bg-white/50";
-    } else {
-        gridBtn.className = "flex items-center gap-2 px-4 py-2.5 rounded-full text-[0.85rem] font-bold transition-all duration-300 text-zinc-400 hover:text-zinc-800 hover:bg-white/50";
-        listBtn.className = "flex items-center gap-2 px-4 py-2.5 rounded-full text-[0.85rem] font-bold transition-all duration-300 bg-zinc-900 text-white shadow-md shadow-zinc-900/10";
+    // For view mode toggle group
+    const viewGroup = document.getElementById('view-toggle-group');
+    const viewIndicator = document.getElementById('view-indicator');
+    if (viewGroup && viewIndicator) {
+        const activeBtn = viewGroup.querySelector(`[data-value="${viewMode}"]`);
+        if (activeBtn) {
+            viewIndicator.style.width = `${activeBtn.offsetWidth}px`;
+            viewIndicator.style.left = `${activeBtn.offsetLeft}px`;
+            viewGroup.querySelectorAll('.toggle-tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn === activeBtn);
+            });
+        }
     }
 }
 
 window.setViewMode = function(mode) {
     viewMode = mode;
     localStorage.setItem('hub-view-mode', mode);
-    updateViewToggleButtons();
+    updateSlidingToggles();
     renderApps();
 };
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     initClock();
-    updateViewToggleButtons();
     
     // 테마 설정 복원
     setTheme(currentTheme);
     const themeSelector = document.getElementById('theme-selector');
     if (themeSelector) themeSelector.value = currentTheme;
-
-    // Set initial sort option in selector
-    const sortSelector = document.getElementById('sort-selector');
-    if (sortSelector) sortSelector.value = sortBy;
 
     // custom 순서 관리 토글 표시 판단
     updateReorderToggleVisibility();
@@ -102,6 +121,25 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     fetchApps();
+    initSearchIntegration();
+    
+    // Sliding Toggles Initialization
+    setTimeout(updateSlidingToggles, 150);
+});
+
+// Update indicator offset on window resizing
+window.addEventListener('resize', updateSlidingToggles);
+
+// Cursor tracking radial glow backlight effect
+document.addEventListener('mousemove', (e) => {
+    const card = e.target.closest('.app-card, .app-list-item');
+    if (card) {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        card.style.setProperty('--mouse-x', `${x}px`);
+        card.style.setProperty('--mouse-y', `${y}px`);
+    }
 });
 
 // Mobile Sidebar
@@ -109,30 +147,6 @@ if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', () => sidebar.classLi
 if (mobileClose) mobileClose.addEventListener('click', () => sidebar.classList.remove('sidebar-open'));
 
 if (appForm) appForm.addEventListener('submit', submitAppForm);
-
-// Keyboard Shortcut for Search (Toggle Spotlight Command Palette)
-document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        openCommandPalette();
-    } else if (commandPaletteOpen) {
-        handlePaletteKeydown(e);
-    }
-});
-
-// Main Search Input Trigger
-if (searchInput) {
-    // When focusing main search, open the immersive Spotlight Search instead
-    searchInput.addEventListener('focus', (e) => {
-        e.preventDefault();
-        searchInput.blur();
-        openCommandPalette();
-    });
-    searchInput.addEventListener('click', (e) => {
-        e.preventDefault();
-        openCommandPalette();
-    });
-}
 
 // Fetch apps
 async function fetchApps() {
@@ -169,21 +183,19 @@ async function fetchApps() {
     }
 }
 
-// Render Sidebar Categories (Glassmorphic)
+// Render Sidebar Categories (Vanilla CSS)
 function renderCategories() {
     const categories = ['All', ...new Set(appsData.map(a => a.category || '일반'))];
 
     if (categoryNav) {
         categoryNav.innerHTML = categories.map(cat => {
             const isActive = cat === currentCategory;
-            const activeClasses = isActive 
-                ? 'text-zinc-900 bg-white/80 shadow-[0_4px_12px_rgba(0,0,0,0.04)] border border-white font-extrabold backdrop-blur-md' 
-                : 'text-zinc-500 font-bold border border-transparent hover:text-zinc-900 hover:bg-white/50 hover:border-white';
+            const activeClasses = isActive ? 'active' : '';
 
             return `
-            <li class="group flex items-center justify-between px-5 py-3.5 rounded-2xl cursor-pointer transition-all duration-300 ${activeClasses}" data-category="${cat}">
-                <span class="text-[0.95rem] tracking-wide">${cat === 'All' ? '전체 시스템' : cat}</span>
-                ${isActive ? '<iconify-icon icon="solar:round-alt-arrow-right-line-duotone" class="text-brand-green text-[1.2rem] drop-shadow-sm"></iconify-icon>' : ''}
+            <li class="category-item ${activeClasses}" data-category="${cat}">
+                <span>${cat === 'All' ? '전체 시스템' : cat}</span>
+                ${isActive ? '<iconify-icon icon="solar:round-alt-arrow-right-line-duotone" class="category-item-icon"></iconify-icon>' : ''}
             </li>
         `}).join('');
 
@@ -209,6 +221,7 @@ window.setSortBy = function(val) {
     localStorage.setItem('hub-sort-by', val);
     currentPage = 1; // Reset to page 1 on sort change
     updateReorderToggleVisibility();
+    updateSlidingToggles();
     renderApps();
 };
 
@@ -244,59 +257,63 @@ function generateAppCard(app, index, isFavoriteItem = false) {
     let hash = 0;
     for (let i = 0; i < catName.length; i++) hash = catName.charCodeAt(i) + ((hash << 5) - hash);
     const palette = [
-        { text: 'text-brand-green', bg: 'bg-[#EBF1ED]' },
-        { text: 'text-zinc-600', bg: 'bg-zinc-100' },
-        { text: 'text-brand-yellow', bg: 'bg-[#FDF6D6]' },
-        { text: 'text-brand-mint', bg: 'bg-[#E3EFE8]' }
+        'icon-palette-green',
+        'icon-palette-gray',
+        'icon-palette-yellow',
+        'icon-palette-mint'
     ];
-    const theme = palette[Math.abs(hash) % palette.length];
+    const themeClass = palette[Math.abs(hash) % palette.length];
 
     const isLocked = app.isLocked === true || app.isLocked === 'TRUE' || app.isLocked === 'true';
     const isActive = app.isActive !== false && app.isActive !== 'FALSE' && app.isActive !== 'false';
     const isFav = favorites.includes(app.id);
 
-    // absolute positioning for top-right toolbar on cards
+    // bento-grid feature layout trigger: if the app has clicks >= 3 or is first in main grid
+    const isFeatured = !isFavoriteItem && viewMode === 'grid' && ((clicks[app.id] || 0) >= 3 || index === 0);
+    const bentoClass = isFeatured ? 'bento-featured' : '';
+
+    // favorite button on cards
     const favoriteButton = `
-        <button onclick="window.toggleFavorite('${app.id}', event)" class="w-9 h-9 rounded-full bg-white/80 dark:bg-zinc-800/80 backdrop-blur-md shadow-sm border border-zinc-100/80 dark:border-zinc-700/50 flex items-center justify-center text-zinc-400 hover:text-brand-yellow hover:scale-105 active:scale-95 transition-all duration-300 z-20 absolute top-5 ${sortBy === 'custom' && reorderModeActive && !isFavoriteItem ? 'right-16' : 'right-5'}" title="${isFav ? '즐겨찾기 해제' : '즐겨찾기 등록'}">
-            <iconify-icon icon="${isFav ? 'solar:star-bold' : 'solar:star-linear'}" class="${isFav ? 'text-brand-yellow' : 'text-zinc-400'} text-[1.1rem]"></iconify-icon>
+        <button onclick="window.toggleFavorite('${app.id}', event)" class="card-favorite-btn ${isFav ? 'favorited' : ''}" style="${sortBy === 'custom' && reorderModeActive && !isFavoriteItem ? 'right: 4.5rem;' : ''}" title="${isFav ? '즐겨찾기 해제' : '즐겨찾기 등록'}">
+            <iconify-icon icon="${isFav ? 'solar:star-bold' : 'solar:star-linear'}" class="${isFav ? 'text-brand-yellow' : ''}"></iconify-icon>
         </button>
     `;
     
-    const lockBadge = isLocked ? `<div class="px-2 py-0.5 rounded-md bg-white/80 dark:bg-zinc-800/80 shadow-sm text-[#FF6B6B] flex items-center gap-1 border border-[#FFEAEA] dark:border-red-950/30 backdrop-blur-md shrink-0"><iconify-icon icon="solar:lock-keyhole-bold-duotone" class="text-[0.75rem]"></iconify-icon><span class="text-[0.6rem] font-extrabold tracking-wider uppercase mt-px">Secured</span></div>` : '';
-    const inactiveBadge = !isActive ? `<div class="px-2 py-0.5 rounded-md bg-zinc-100/80 dark:bg-zinc-800/60 shadow-sm text-zinc-500 flex items-center gap-1 border border-zinc-200 dark:border-zinc-700/30 backdrop-blur-md shrink-0"><iconify-icon icon="solar:forbidden-circle-bold-duotone" class="text-[0.75rem]"></iconify-icon><span class="text-[0.6rem] font-extrabold tracking-wider uppercase mt-px">Offline</span></div>` : '';
+    const lockBadge = isLocked ? `<div class="status-badge secured"><iconify-icon icon="solar:lock-keyhole-bold" style="font-size: 0.75rem;"></iconify-icon><span>Secured</span></div>` : '';
+    const inactiveBadge = !isActive ? `<div class="status-badge offline"><iconify-icon icon="solar:forbidden-circle-bold" style="font-size: 0.75rem;"></iconify-icon><span>Offline</span></div>` : '';
     
     // Live Status Health Checker Badge
     const pingStatus = pingStatuses[app.id] || 'checking';
     let pingBadge = '';
     if (isActive) {
         if (pingStatus === 'checking') {
-            pingBadge = `<div data-ping-app-id="${app.id}" class="flex items-center gap-1 px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/60 text-zinc-500 border border-zinc-200 dark:border-zinc-700/30 text-[0.6rem] font-extrabold shrink-0"><iconify-icon icon="solar:spinner-track-bold-duotone" class="animate-spin text-[0.7rem]"></iconify-icon> Checking</div>`;
+            pingBadge = `<div data-ping-app-id="${app.id}" class="status-badge checking"><iconify-icon icon="solar:spinner-track-bold-duotone" class="animate-spin" style="font-size: 0.75rem;"></iconify-icon> Checking</div>`;
         } else if (pingStatus === 'online') {
-            pingBadge = `<div data-ping-app-id="${app.id}" class="flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#E3EFE8] dark:bg-green-950/20 text-brand-green border border-brand-green/20 text-[0.6rem] font-extrabold shrink-0"><span class="w-1.5 h-1.5 rounded-full bg-brand-green animate-pulse"></span> Online</div>`;
+            pingBadge = `<div data-ping-app-id="${app.id}" class="status-badge online"><span class="status-badge-dot"></span> Online</div>`;
         } else {
-            pingBadge = `<div data-ping-app-id="${app.id}" class="flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#FFF5F5] dark:bg-red-950/20 text-red-500 border border-red-200 dark:border-red-900/20 text-[0.6rem] font-extrabold shrink-0"><span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span> Offline</div>`;
+            pingBadge = `<div data-ping-app-id="${app.id}" class="status-badge offline"><span class="status-badge-dot"></span> Offline</div>`;
         }
     }
 
-    let badgesContainer = (lockBadge || inactiveBadge || pingBadge) ? `<div class="flex items-center gap-1.5 flex-wrap">${lockBadge}${inactiveBadge}${pingBadge}</div>` : '';
+    let badgesContainer = (lockBadge || inactiveBadge || pingBadge) ? `<div class="badge-capsule-row">${lockBadge}${inactiveBadge}${pingBadge}</div>` : '';
 
     // Keyboard Shortcuts Alt + [1-9] Guideline
     const favIndex = favorites.indexOf(app.id);
     let shortcutBadge = '';
     if (favIndex >= 0 && favIndex < 9) {
-        shortcutBadge = `<span class="inline-flex items-center bg-zinc-900/5 dark:bg-white/10 text-zinc-500 dark:text-zinc-400 text-[0.65rem] font-bold px-1.5 py-0.5 rounded border border-zinc-200/50 dark:border-white/10 select-none" title="Alt + ${favIndex + 1} 단축키로 실행 가능"><kbd class="font-mono">Alt + ${favIndex + 1}</kbd></span>`;
+        shortcutBadge = `<span class="shortcut-kbd-badge" title="Alt + ${favIndex + 1} 단축키로 실행 가능"><kbd>Alt + ${favIndex + 1}</kbd></span>`;
     }
 
     // Custom Order Reorder Buttons
     let reorderButtons = '';
     if (sortBy === 'custom' && reorderModeActive && !isFavoriteItem) {
         reorderButtons = `
-            <div class="flex items-center gap-1 z-30 absolute top-5 right-5" onclick="event.stopPropagation();">
-                <button onclick="window.moveApp('${app.id}', 'prev', event)" class="w-8 h-8 rounded-full bg-white/90 dark:bg-zinc-800/90 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-900 dark:hover:bg-white hover:text-white dark:hover:text-zinc-900 flex items-center justify-center transition-all shadow-sm active:scale-95" title="앞으로 이동">
-                    <iconify-icon icon="solar:alt-arrow-left-line-duotone" class="text-sm"></iconify-icon>
+            <div class="card-reorder-wrap" onclick="event.stopPropagation();">
+                <button onclick="window.moveApp('${app.id}', 'prev', event)" class="card-reorder-btn" title="앞으로 이동">
+                    <iconify-icon icon="solar:alt-arrow-left-line-duotone"></iconify-icon>
                 </button>
-                <button onclick="window.moveApp('${app.id}', 'next', event)" class="w-8 h-8 rounded-full bg-white/90 dark:bg-zinc-800/90 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-900 dark:hover:bg-white hover:text-white dark:hover:text-zinc-900 flex items-center justify-center transition-all shadow-sm active:scale-95" title="뒤로 이동">
-                    <iconify-icon icon="solar:alt-arrow-right-line-duotone" class="text-sm"></iconify-icon>
+                <button onclick="window.moveApp('${app.id}', 'next', event)" class="card-reorder-btn" title="뒤로 이동">
+                    <iconify-icon icon="solar:alt-arrow-right-line-duotone"></iconify-icon>
                 </button>
             </div>
         `;
@@ -322,58 +339,59 @@ function generateAppCard(app, index, isFavoriteItem = false) {
     }
 
     if (viewMode === 'list' && !isFavoriteItem) {
+        const disabledClass = !isActive ? 'disabled' : '';
         return `
-        <div class="${extraClasses} group block w-full rounded-[1.8rem] bg-white/40 border border-white hover:border-brand-green/30 transition-all duration-500 ease-out hover:-translate-y-0.5 hover:shadow-[0_15px_30px_rgba(0,0,0,0.03)] relative animate-fade-in-up ${!isActive ? 'opacity-60 grayscale hover:shadow-none hover:border-white' : 'shadow-[0_4px_20px_rgba(0,0,0,0.02)] backdrop-blur-md'}" style="animation-delay: ${index * 40}ms; opacity: 0; outline: none;">
-            
-            <!-- Double Bezel Inner Core -->
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between rounded-[calc(1.8rem-1px)] bg-gradient-to-br from-white/95 via-white/80 to-zinc-50/50 p-5 sm:p-6 gap-4 sm:gap-6 relative z-0">
+        <div class="app-list-item ${disabledClass} animate-fade-in-up" style="animation-delay: ${index * 40}ms;">
+            <div class="app-list-item-inner">
+                <!-- Radial Backlight Glow Overlay -->
+                <div class="card-glow"></div>
                 
                 <!-- Action Overlay -->
-                <${closingTag} ${cardAction} class="absolute inset-0 z-10 rounded-[calc(1.8rem-1px)] ${!isActive ? 'cursor-not-allowed' : 'cursor-pointer'}" aria-label="${app.name} 이동"></${closingTag}>
+                <${closingTag} ${cardAction} class="card-action-overlay" aria-label="${app.name} 이동"></${closingTag}>
                 
-                <div class="flex items-center gap-5 flex-1 min-w-0 pr-24 pointer-events-none">
+                <div class="list-item-left">
                     <!-- Premium Icon Box -->
-                    <div class="w-12 h-12 rounded-[1rem] shrink-0 ${theme.bg} ${theme.text} flex items-center justify-center text-[1.8rem] group-hover:scale-[1.08] group-hover:rotate-2 transition-transform duration-500 ease-out shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_4px_12px_rgba(0,0,0,0.03)] border border-white">
+                    <div class="list-item-icon-box ${themeClass}">
                         <iconify-icon icon="${app.icon || 'solar:link-circle-bold-duotone'}"></iconify-icon>
                     </div>
                     
-                    <div class="flex-1 min-w-0">
-                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-1.5">
-                            <h3 class="font-extrabold text-zinc-900 text-[1.1rem] tracking-tight leading-tight flex items-center gap-1.5">${app.name} ${shortcutBadge}</h3>
-                            <span class="inline-block text-[0.6rem] font-extrabold text-zinc-400 tracking-[0.15em] uppercase px-2 py-0.5 rounded bg-zinc-100/50 border border-zinc-200/30">${catName}</span>
-                            ${clicks[app.id] ? `<span class="inline-flex items-center gap-1 text-[0.6rem] font-bold text-brand-green bg-brand-green/10 border border-brand-green/20 px-1.5 py-0.5 rounded-md"><iconify-icon icon="solar:fire-bold"></iconify-icon> ${clicks[app.id]}</span>` : ''}
+                    <div class="list-item-content">
+                        <div class="list-item-title-row">
+                            <h3 class="list-item-title">${app.name}</h3>
+                            ${shortcutBadge}
+                            <span class="list-item-cat-label">${catName}</span>
+                            ${clicks[app.id] ? `<span class="card-clicks-label"><iconify-icon icon="solar:fire-bold" style="vertical-align: middle; margin-right: 0.15rem;"></iconify-icon>${clicks[app.id]}회</span>` : ''}
                             ${badgesContainer}
                         </div>
-                        <p class="text-[0.85rem] text-zinc-500 font-medium line-clamp-1 leading-relaxed">${app.description || '시스템에 대한 설명이 없습니다.'}</p>
+                        <p class="list-item-description">${app.description || '시스템에 대한 설명이 없습니다.'}</p>
                     </div>
                 </div>
                 
-                <!-- Action Controls Toolbar -->
-                <div class="flex items-center justify-end gap-3 shrink-0 border-t border-zinc-100 sm:border-0 pt-3 sm:pt-0 mr-12 pointer-events-none">
-                    ${isActive && !isLocked ? '<div class="w-8 h-8 rounded-full bg-white shadow-sm border border-zinc-100 flex items-center justify-center text-zinc-400 group-hover:text-brand-green group-hover:bg-zinc-50 transition-colors duration-300"><iconify-icon icon="solar:arrow-right-up-linear" class="text-base"></iconify-icon></div>' : ''}
+                <div class="list-item-right">
+                    ${isActive && !isLocked ? '<div class="list-item-arrow"><iconify-icon icon="solar:arrow-right-up-linear"></iconify-icon></div>' : ''}
                 </div>
                 
                 ${reorderButtons}
                 ${favoriteButton}
-                
             </div>
         </div>
         `;
     }
 
-    // Grid layout (applied also in Favorites drawer for aesthetic uniformity)
+    // Grid layout (default)
+    const disabledClass = !isActive ? 'disabled' : '';
     return `
-    <div class="${extraClasses} group block h-full rounded-[2.2rem] bg-white/40 border border-white hover:border-brand-green/30 transition-all duration-500 ease-out hover:-translate-y-2 hover:shadow-[0_30px_60px_-15px_rgba(134,167,137,0.25)] relative animate-fade-in-up ${!isActive ? 'opacity-60 grayscale hover:translate-y-0 hover:shadow-none hover:border-white' : 'shadow-[0_8px_30px_rgba(0,0,0,0.04)] backdrop-blur-md'}" style="animation-delay: ${index * 60}ms; opacity: 0; outline: none;">
-        
+    <div class="app-card ${disabledClass} ${bentoClass} animate-fade-in-up" style="animation-delay: ${index * 60}ms;">
         <!-- Action Overlay -->
-        <${closingTag} ${cardAction} class="absolute inset-0 z-10 rounded-[2.2rem] ${!isActive ? 'cursor-not-allowed' : 'cursor-pointer'}" aria-label="${app.name} 이동"></${closingTag}>
+        <${closingTag} ${cardAction} class="card-action-overlay" aria-label="${app.name} 이동"></${closingTag}>
         
-        <!-- Double Bezel Inner Core - Forced to fill height -->
-        <div class="flex flex-col h-full rounded-[calc(2.2rem-1px)] bg-gradient-to-br from-white/90 via-white/70 to-zinc-50/50 shadow-[inset_0_1px_2px_rgba(255,255,255,1)] p-8 relative z-0">
+        <div class="app-card-inner">
+            <!-- Radial Backlight Glow Overlay -->
+            <div class="card-glow"></div>
             
-            <div class="flex items-start justify-between mb-8 pr-20 pointer-events-none">
+            <div style="margin-bottom: auto;">
                 <!-- Premium Icon Box -->
-                <div class="w-16 h-16 rounded-[1.3rem] ${theme.bg} ${theme.text} flex items-center justify-center text-[2.2rem] group-hover:scale-[1.1] group-hover:rotate-3 transition-transform duration-500 ease-out shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),0_4px_12px_rgba(0,0,0,0.05)] border border-white">
+                <div class="card-icon-box ${themeClass}">
                     <iconify-icon icon="${app.icon || 'solar:link-circle-bold-duotone'}"></iconify-icon>
                 </div>
             </div>
@@ -381,52 +399,80 @@ function generateAppCard(app, index, isFavoriteItem = false) {
             ${reorderButtons}
             ${favoriteButton}
             
-            <div class="mt-auto flex flex-col flex-1 pointer-events-none">
-                <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
-                    <div class="text-[0.65rem] font-extrabold text-zinc-400 tracking-[0.2em] uppercase drop-shadow-sm">${catName}</div>
-                    ${clicks[app.id] ? `<div class="flex items-center gap-1 text-[0.65rem] font-bold text-brand-green bg-brand-green/10 border border-brand-green/20 px-2 py-0.5 rounded-md"><iconify-icon icon="solar:fire-bold"></iconify-icon> ${clicks[app.id]}회</div>` : ''}
+            <div class="card-body">
+                <div class="card-cat-clicks-row">
+                    <div class="card-category-label">${catName}</div>
+                    ${clicks[app.id] ? `<div class="card-clicks-label"><iconify-icon icon="solar:fire-bold" style="vertical-align: middle; margin-right: 0.15rem;"></iconify-icon>${clicks[app.id]}회</div>` : ''}
                 </div>
                 
-                <div class="flex items-center gap-3 mb-3">
-                    <h3 class="font-extrabold text-zinc-900 text-[1.3rem] tracking-tight leading-tight flex-1 flex items-center gap-1.5 flex-wrap">${app.name} ${shortcutBadge}</h3>
-                    ${isActive && !isLocked ? '<div class="w-9 h-9 rounded-full bg-white shadow-sm border border-zinc-100 flex items-center justify-center opacity-0 -translate-x-3 translate-y-3 group-hover:opacity-100 group-hover:translate-x-0 group-hover:translate-y-0 transition-all duration-500 text-brand-green shrink-0"><iconify-icon icon="solar:arrow-right-up-linear" class="text-lg"></iconify-icon></div>' : ''}
+                <div class="card-title-row">
+                    <h3 class="card-title">${app.name}</h3>
+                    ${shortcutBadge}
+                    ${isActive && !isLocked ? '<div class="card-arrow-box"><iconify-icon icon="solar:arrow-right-up-linear"></iconify-icon></div>' : ''}
                 </div>
                 
-                <p class="text-[0.95rem] text-zinc-500 leading-relaxed font-medium line-clamp-2 mb-4">${app.description || '시스템에 대한 설명이 없습니다.'}</p>
+                <p class="card-description">${app.description || '시스템에 대한 설명이 없습니다.'}</p>
                 
-                <div class="mt-auto pt-2 border-t border-zinc-100/50">
+                <div class="card-footer">
                     ${badgesContainer}
                 </div>
             </div>
-            
         </div>
     </div>
     `;
 }
 
-// Render Apps Grid (Double Bezel + Stretching)
+// Accordion collapse handler
+window.toggleCategorySection = function(categoryName) {
+    const isCollapsed = collapsedSections[categoryName] === true;
+    collapsedSections[categoryName] = !isCollapsed;
+    localStorage.setItem('hub-collapsed-sections', JSON.stringify(collapsedSections));
+    
+    // Smooth toggle in DOM
+    const header = document.querySelector(`.category-section-header[onclick*="${categoryName}"]`);
+    const grid = document.getElementById(`category-section-grid-${categoryName}`);
+    
+    if (header && grid) {
+        const arrow = header.querySelector('.category-section-arrow');
+        const icon = header.querySelector('.category-section-icon');
+        
+        if (!isCollapsed) {
+            header.classList.add('collapsed');
+            grid.classList.add('collapsed');
+            if (icon) icon.icon = 'solar:folder-bold-duotone';
+        } else {
+            header.classList.remove('collapsed');
+            grid.classList.remove('collapsed');
+            if (icon) icon.icon = 'solar:folder-opened-bold-duotone';
+        }
+    }
+};
+
+// Render Apps Grid
 function renderApps() {
-    loadingEl.classList.add('hidden');
-    appsGrid.classList.remove('hidden');
+    if (loadingEl) loadingEl.classList.add('hidden');
+    if (appsGrid) appsGrid.classList.remove('hidden');
 
     if (appsData.length === 0) {
-        appsGrid.classList.add('hidden');
+        if (appsGrid) appsGrid.classList.add('hidden');
         document.getElementById('favorites-container').classList.add('hidden');
-        loadingEl.classList.remove('hidden');
-        loadingEl.innerHTML = `
-            <div class="flex flex-col items-center justify-center py-24 w-full animate-fade-in-up text-center">
-                <iconify-icon icon="solar:folder-error-bold-duotone" class="text-6xl text-zinc-300 mb-6 drop-shadow-sm"></iconify-icon>
-                <h3 class="text-xl font-extrabold text-zinc-800 tracking-tight mb-2">등록된 시스템이 없습니다</h3>
-                <p class="text-[0.95rem] text-zinc-500 font-medium">우측 하단 관리자 패널에서 시스템을 배포하세요.</p>
-            </div>
-        `;
+        if (loadingEl) {
+            loadingEl.classList.remove('hidden');
+            loadingEl.innerHTML = `
+                <div class="loading-panel animate-fade-in-up text-center">
+                    <iconify-icon icon="solar:folder-error-bold-duotone" class="loading-spinner" style="color: var(--color-text-secondary); opacity: 0.4; margin-bottom: 1.5rem;"></iconify-icon>
+                    <h3 class="loading-text" style="margin-bottom: 0.5rem;">등록된 시스템이 없습니다</h3>
+                    <p style="font-size: 0.9rem; color: var(--color-text-secondary);">시스템 관리 패널에서 모듈을 배포하세요.</p>
+                </div>
+            `;
+        }
         return;
     }
 
     // 1. FILTERING
     let filteredApps = appsData.filter(app => {
         const matchesCategory = currentCategory === 'All' || (app.category || '일반') === currentCategory;
-        const searchTarget = (app.name + ' ' + (app.description || '')).toLowerCase();
+        const searchTarget = (app.name + ' ' + (app.description || '') + ' ' + (app.category || '')).toLowerCase();
         const matchesSearch = searchTarget.includes(searchQuery);
         return matchesCategory && matchesSearch;
     });
@@ -452,12 +498,12 @@ function renderApps() {
         return 0;
     });
 
-    // 3. RENDER PINNED FAVORITES DRAWER
+    // 3. RENDER PINNED FAVORITES DRAWER (Only when not searching)
     const favoritesContainer = document.getElementById('favorites-container');
     const favoritesGrid = document.getElementById('favorites-grid');
     const favApps = appsData.filter(app => favorites.includes(app.id));
 
-    if (favApps.length > 0) {
+    if (favApps.length > 0 && searchQuery === '') {
         favoritesContainer.classList.remove('hidden');
         favoritesGrid.innerHTML = favApps.map((app, idx) => generateAppCard(app, idx, true)).join('');
     } else {
@@ -467,44 +513,89 @@ function renderApps() {
 
     // 4. EMPTY FILTER RESULTS
     if (filteredApps.length === 0) {
-        appsGrid.classList.add('hidden');
+        if (appsGrid) appsGrid.classList.add('hidden');
         document.getElementById('pagination-container').innerHTML = '';
-        loadingEl.classList.remove('hidden');
-        loadingEl.innerHTML = `
-            <div class="flex flex-col items-center justify-center py-24 w-full animate-fade-in-up text-center">
-                <iconify-icon icon="solar:magnifer-bold-duotone" class="text-6xl text-zinc-300 mb-6 drop-shadow-sm"></iconify-icon>
-                <p class="text-[0.95rem] text-zinc-500 font-bold tracking-wide">검색 결과가 없습니다.</p>
-            </div>
-        `;
+        if (loadingEl) {
+            loadingEl.classList.remove('hidden');
+            loadingEl.innerHTML = `
+                <div class="loading-panel animate-fade-in-up text-center">
+                    <iconify-icon icon="solar:magnifer-bold-duotone" class="loading-spinner" style="color: var(--color-text-secondary); opacity: 0.3; margin-bottom: 1rem;"></iconify-icon>
+                    <p class="loading-text">검색 결과가 없습니다.</p>
+                </div>
+            `;
+        }
         return;
     }
 
-    // 5. PAGINATION SLICING
-    const itemsPerPage = viewMode === 'grid' ? 8 : 5;
-    const totalItems = filteredApps.length;
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    // 5. ACCORDION GROUPING (Only when viewing "All" and not searching)
+    if (currentCategory === 'All' && searchQuery === '') {
+        // Group by Category
+        const categoriesMap = {};
+        filteredApps.forEach(app => {
+            const cat = app.category || '일반';
+            if (!categoriesMap[cat]) categoriesMap[cat] = [];
+            categoriesMap[cat].push(app);
+        });
 
-    if (currentPage > totalPages) {
-        currentPage = 1;
-    }
+        let accordionHTML = '';
+        Object.keys(categoriesMap).forEach((cat, secIdx) => {
+            const catApps = categoriesMap[cat];
+            const isCollapsed = collapsedSections[cat] === true;
+            const collapsedClass = isCollapsed ? 'collapsed' : '';
+            const gridCollapsedClass = isCollapsed ? 'collapsed' : '';
+            const gridLayoutClass = viewMode === 'grid' ? 'apps-grid' : 'apps-list-view';
+            const folderIcon = isCollapsed ? 'solar:folder-bold-duotone' : 'solar:folder-opened-bold-duotone';
 
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const slicedApps = filteredApps.slice(startIndex, startIndex + itemsPerPage);
+            accordionHTML += `
+                <div class="category-accordion-section animate-fade-in-up" style="animation-delay: ${secIdx * 80}ms;">
+                    <div class="category-section-header ${collapsedClass}" onclick="toggleCategorySection('${cat.replace(/'/g, "\\'")}')">
+                        <div class="category-section-title-wrap">
+                            <iconify-icon icon="${folderIcon}" class="category-section-icon"></iconify-icon>
+                            <span class="category-section-title">${cat}</span>
+                            <span class="category-section-count">${catApps.length}</span>
+                        </div>
+                        <iconify-icon icon="solar:alt-arrow-down-bold" class="category-section-arrow"></iconify-icon>
+                    </div>
+                    <div id="category-section-grid-${cat}" class="category-section-grid ${gridLayoutClass} ${gridCollapsedClass}">
+                        ${catApps.map((app, idx) => generateAppCard(app, idx, false)).join('')}
+                    </div>
+                </div>
+            `;
+        });
 
-    // 6. DRAW ITEMS
-    if (viewMode === 'grid') {
-        appsGrid.className = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6";
+        if (appsGrid) {
+            appsGrid.className = "category-accordion-container";
+            appsGrid.innerHTML = accordionHTML;
+        }
+        document.getElementById('pagination-container').innerHTML = ''; // No pagination in grouped accordion view
     } else {
-        appsGrid.className = "flex flex-col gap-4 w-full animate-fade-in-up";
-    }
+        // 6. FLAT VIEW (When filtering specific category or typing search)
+        const itemsPerPage = viewMode === 'grid' ? 8 : 5;
+        const totalItems = filteredApps.length;
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
 
-    appsGrid.innerHTML = slicedApps.map((app, index) => generateAppCard(app, index, false)).join('');
-    
-    // 7. RENDER PAGINATION CONTROLS
-    renderPagination(totalItems, itemsPerPage);
+        if (currentPage > totalPages) {
+            currentPage = 1;
+        }
+
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const slicedApps = filteredApps.slice(startIndex, startIndex + itemsPerPage);
+
+        if (appsGrid) {
+            if (viewMode === 'grid') {
+                appsGrid.className = "apps-grid";
+            } else {
+                appsGrid.className = "apps-list-view";
+            }
+            appsGrid.innerHTML = slicedApps.map((app, index) => generateAppCard(app, index, false)).join('');
+        }
+        
+        // Render Pagination Controls
+        renderPagination(totalItems, itemsPerPage);
+    }
 }
 
-// Premium Render Glassmorphic Pagination Capsule
+// Render Pagination Controls
 function renderPagination(totalItems, itemsPerPage) {
     const pagContainer = document.getElementById('pagination-container');
     if (!pagContainer) return;
@@ -520,8 +611,8 @@ function renderPagination(totalItems, itemsPerPage) {
     // Prev Button
     const prevDisabled = currentPage === 1;
     buttons.push(`
-        <button onclick="changePage(${currentPage - 1})" ${prevDisabled ? 'disabled' : ''} class="w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-300 ${prevDisabled ? 'border-transparent text-zinc-300 cursor-not-allowed' : 'border-zinc-200 bg-white/60 hover:bg-white text-zinc-600 hover:text-zinc-900 shadow-sm active:scale-95'}">
-            <iconify-icon icon="solar:alt-arrow-left-line-duotone" class="text-[1.1rem]"></iconify-icon>
+        <button onclick="changePage(${currentPage - 1})" ${prevDisabled ? 'disabled' : ''} class="pagination-btn">
+            <iconify-icon icon="solar:alt-arrow-left-line-duotone" style="font-size: 1.1rem;"></iconify-icon>
         </button>
     `);
 
@@ -530,11 +621,11 @@ function renderPagination(totalItems, itemsPerPage) {
         const isCurrent = currentPage === i;
         if (isCurrent) {
             buttons.push(`
-                <button class="h-10 px-4 rounded-full text-[0.85rem] font-extrabold bg-zinc-900 text-white shadow-md shadow-zinc-900/15 pointer-events-none transition-all duration-300">${i}</button>
+                <button class="pagination-btn active">${i}</button>
             `);
         } else {
             buttons.push(`
-                <button onclick="changePage(${i})" class="h-10 px-4 rounded-full text-[0.85rem] font-bold border border-zinc-200/80 bg-white/60 hover:bg-white text-zinc-500 hover:text-zinc-900 hover:shadow-sm active:scale-95 transition-all duration-300">${i}</button>
+                <button onclick="changePage(${i})" class="pagination-btn">${i}</button>
             `);
         }
     }
@@ -542,14 +633,13 @@ function renderPagination(totalItems, itemsPerPage) {
     // Next Button
     const nextDisabled = currentPage === totalPages;
     buttons.push(`
-        <button onclick="changePage(${currentPage + 1})" ${nextDisabled ? 'disabled' : ''} class="w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-300 ${nextDisabled ? 'border-transparent text-zinc-300 cursor-not-allowed' : 'border-zinc-200 bg-white/60 hover:bg-white text-zinc-600 hover:text-zinc-900 shadow-sm active:scale-95'}">
-            <iconify-icon icon="solar:alt-arrow-right-line-duotone" class="text-[1.1rem]"></iconify-icon>
+        <button onclick="changePage(${currentPage + 1})" ${nextDisabled ? 'disabled' : ''} class="pagination-btn">
+            <iconify-icon icon="solar:alt-arrow-right-line-duotone" style="font-size: 1.1rem;"></iconify-icon>
         </button>
     `);
 
-    // Wrap in premium ambient glass capsule
     pagContainer.innerHTML = `
-        <div class="inline-flex items-center gap-1.5 bg-white/40 backdrop-blur-md border border-white p-1.5 rounded-full shadow-[0_4px_25px_rgba(0,0,0,0.02)]">
+        <div class="pagination-capsule">
             ${buttons.join('')}
         </div>
     `;
@@ -567,38 +657,48 @@ window.changePage = function(page) {
 };
 
 function showError(msg) {
-    loadingEl.innerHTML = `
-        <div class="flex flex-col items-center justify-center py-20 w-full text-center">
-            <iconify-icon icon="solar:danger-triangle-line-duotone" class="text-6xl text-red-400 mb-6 drop-shadow-sm"></iconify-icon>
-            <div class="text-center leading-relaxed text-zinc-600 font-bold">${msg}</div>
-        </div>
-    `;
+    if (loadingEl) {
+        loadingEl.innerHTML = `
+            <div class="loading-panel text-center">
+                <iconify-icon icon="solar:danger-triangle-line-duotone" class="loading-spinner" style="color: var(--color-danger); margin-bottom: 1.5rem;"></iconify-icon>
+                <div class="loading-text" style="color: var(--color-text-primary);">${msg}</div>
+            </div>
+        `;
+    }
 }
 
 // Modal Logic
-function openModal(id) { 
+window.openModal = function(id) { 
     const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add('show');
     el.setAttribute('data-show', 'true');
-}
+};
 
-function closeModal(id) { 
+window.closeModal = function(id) { 
     const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('show');
     el.setAttribute('data-show', 'false');
-}
+};
 
 if (adminLoginBtn) {
     adminLoginBtn.addEventListener('click', () => {
         if (isAdmin) openAdminDashboard();
         else {
             openModal('login-modal');
-            document.getElementById('admin-password').value = '';
-            setTimeout(() => document.getElementById('admin-password').focus(), 100);
+            const pwInput = document.getElementById('admin-password');
+            if (pwInput) pwInput.value = '';
+            setTimeout(() => {
+                if (pwInput) pwInput.focus();
+            }, 100);
         }
     });
 }
 
 function loginAdmin() {
-    const pw = document.getElementById('admin-password').value;
+    const pwInput = document.getElementById('admin-password');
+    const pw = pwInput ? pwInput.value : '';
     if (!pw) return alert("비밀번호를 입력해주세요.");
     isAdmin = true;
     window.adminPassword = pw;
@@ -649,42 +749,44 @@ function renderAdminTable() {
         return adminSortOrder === 'asc' ? cmp : -cmp;
     });
 
-    adminAppsList.innerHTML = sortedData.map(app => {
-        const isActive = app.isActive !== false && app.isActive !== 'FALSE' && app.isActive !== 'false';
-        
-        return `
-        <tr class="group hover:bg-white/90 transition-colors rounded-2xl relative bg-white/50 backdrop-blur-sm">
-            <td class="px-6 py-4 rounded-l-2xl border-y border-l border-zinc-200/50 border-r-0"><span class="text-[0.65rem] font-bold text-zinc-500 uppercase tracking-[0.1em] bg-white shadow-sm px-2.5 py-1.5 rounded-lg border border-zinc-100">${app.category || '일반'}</span></td>
-            <td class="px-6 py-4 font-bold text-zinc-800 border-y border-zinc-200/50">
-                <div class="flex items-center gap-4">
-                    <div class="w-11 h-11 rounded-xl bg-brand-green/10 text-brand-green border border-white flex items-center justify-center text-xl shadow-sm">
-                        <iconify-icon icon="${app.icon || 'solar:link-circle-bold-duotone'}"></iconify-icon>
+    if (adminAppsList) {
+        adminAppsList.innerHTML = sortedData.map(app => {
+            const isActive = app.isActive !== false && app.isActive !== 'FALSE' && app.isActive !== 'false';
+            
+            return `
+            <tr class="registry-row">
+                <td class="registry-cell"><span class="registry-cat-badge">${app.category || '일반'}</span></td>
+                <td class="registry-cell">
+                    <div class="registry-product-cell">
+                        <div class="registry-product-icon-box">
+                            <iconify-icon icon="${app.icon || 'solar:link-circle-bold-duotone'}"></iconify-icon>
+                        </div>
+                        <div>
+                            <div class="registry-product-name" style="${!isActive ? 'text-decoration: line-through; opacity: 0.5;' : ''}">${app.name}</div>
+                            ${!isActive ? '<span class="registry-product-disabled-tag">비활성화됨</span>' : ''}
+                        </div>
                     </div>
-                    <div>
-                        <div class="${!isActive ? 'line-through text-zinc-400' : 'text-zinc-900'} text-[1.05rem] font-extrabold tracking-tight leading-none mb-1.5">${app.name}</div>
-                        ${!isActive ? '<span class="text-[0.65rem] text-red-500 font-bold uppercase tracking-wider">비활성화됨</span>' : ''}
+                </td>
+                <td class="registry-cell hidden md:table-cell">
+                    <a href="${app.url}" target="_blank" class="registry-link">${app.url}</a>
+                </td>
+                <td class="registry-cell" style="width: 140px;">
+                    <div class="registry-actions-wrap">
+                        <button class="registry-action-btn edit-btn" onclick="editApp('${app.id}')" title="수정"><iconify-icon icon="solar:pen-new-square-bold-duotone"></iconify-icon></button>
+                        <button class="registry-action-btn delete-btn" onclick="deleteApp('${app.id}')" title="삭제"><iconify-icon icon="solar:trash-bin-trash-bold-duotone"></iconify-icon></button>
                     </div>
-                </div>
-            </td>
-            <td class="px-6 py-4 border-y border-zinc-200/50 hidden md:table-cell">
-                <a href="${app.url}" target="_blank" class="text-zinc-500 text-[0.85rem] font-medium hover:text-brand-green truncate block max-w-[200px] transition-colors tracking-wide">${app.url}</a>
-            </td>
-            <td class="px-6 py-4 rounded-r-2xl text-right border-y border-r border-zinc-200/50 border-l-0 w-[140px]">
-                <div class="flex items-center justify-end gap-2">
-                    <button class="w-9 h-9 rounded-full flex items-center justify-center bg-white text-zinc-500 hover:bg-brand-green hover:text-white border border-white transition-all shadow-sm" onclick="editApp('${app.id}')" title="수정"><iconify-icon icon="solar:pen-new-square-bold-duotone" class="text-base"></iconify-icon></button>
-                    <button class="w-9 h-9 rounded-full flex items-center justify-center bg-[#FFF5F5] text-[#FF6B6B] hover:bg-[#FF6B6B] hover:text-white border border-white transition-all shadow-sm" onclick="deleteApp('${app.id}')" title="삭제"><iconify-icon icon="solar:trash-bin-trash-bold-duotone" class="text-base"></iconify-icon></button>
-                </div>
-            </td>
-        </tr>
-    `}).join('');
+                </td>
+            </tr>
+        `}).join('');
 
-    if (appsData.length === 0) {
-        adminAppsList.innerHTML = '<tr><td colspan="4" class="text-center py-12 text-zinc-400 font-bold">배포된 시스템이 없습니다.</td></tr>';
+        if (appsData.length === 0) {
+            adminAppsList.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 3rem; color: var(--color-text-secondary); font-weight: bold;">배포된 시스템이 없습니다.</td></tr>';
+        }
     }
 }
 
 function openAppForm(appId = null) {
-    appForm.reset();
+    if (appForm) appForm.reset();
     
     const categoryList = document.getElementById('category-list');
     if (categoryList) {
@@ -751,7 +853,7 @@ async function submitAppForm(e) {
 
     const submitBtn = document.getElementById('form-submit-btn');
     const originalContent = submitBtn.innerHTML;
-    submitBtn.innerHTML = `<iconify-icon icon="solar:spinner-track-bold-duotone" class="text-xl animate-spin"></iconify-icon> <span class="text-[0.95rem]">기록 중...</span>`;
+    submitBtn.innerHTML = `<iconify-icon icon="solar:spinner-track-bold-duotone" style="font-size: 1.25rem; vertical-align: middle; margin-right: 0.5rem;" class="animate-spin"></iconify-icon> <span>기록 중...</span>`;
     submitBtn.disabled = true;
 
     await requestBackend(action, appData);
@@ -795,9 +897,11 @@ async function requestBackend(action, appData) {
 }
 
 function alertStatus(msg, type = 'success') {
-    adminStatus.innerText = msg;
-    adminStatus.className = 'text-[0.85rem] font-bold ' + (type === 'success' ? 'text-brand-green' : 'text-red-500');
-    setTimeout(() => { if (adminStatus.innerText === msg) adminStatus.innerText = ''; }, 3000);
+    if (adminStatus) {
+        adminStatus.innerText = msg;
+        adminStatus.style.color = type === 'success' ? 'var(--color-brand)' : 'var(--color-danger)';
+        setTimeout(() => { if (adminStatus.innerText === msg) adminStatus.innerText = ''; }, 3000);
+    }
 }
 
 window.togglePasswordField = function() {
@@ -808,192 +912,13 @@ window.togglePasswordField = function() {
         pwdGroup.classList.remove('hidden');
     } else {
         pwdGroup.classList.add('hidden');
-        pwdInput.value = '';
+        if (pwdInput) pwdInput.value = '';
     }
 };
 
-window.openCommandPalette = function() {
-    const palette = document.getElementById('command-palette');
-    if (!palette) return;
-    
-    commandPaletteOpen = true;
-    selectedPaletteIndex = 0;
-    
-    const searchInput = document.getElementById('palette-search-input');
-    if (searchInput) searchInput.value = '';
-    
-    palette.classList.remove('hidden');
-    palette.offsetHeight;
-    palette.setAttribute('data-show', 'true');
-    
-    renderPaletteResults();
-    
-    setTimeout(() => {
-        if (searchInput) searchInput.focus();
-    }, 100);
-};
-
-window.closeCommandPalette = function() {
-    const palette = document.getElementById('command-palette');
-    if (!palette) return;
-    
-    commandPaletteOpen = false;
-    palette.setAttribute('data-show', 'false');
-    
-    setTimeout(() => {
-        if (!commandPaletteOpen) {
-            palette.classList.add('hidden');
-        }
-    }, 300);
-};
-
-// Realtime dynamic search and render in Spotlight
-function renderPaletteResults() {
-    const resultsContainer = document.getElementById('palette-results');
-    const searchInput = document.getElementById('palette-search-input');
-    if (!resultsContainer) return;
-    
-    const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
-    
-    const filtered = appsData.filter(app => {
-        const name = (app.name || '').toLowerCase();
-        const cat = (app.category || '일반').toLowerCase();
-        const desc = (app.description || '').toLowerCase();
-        return name.includes(query) || cat.includes(query) || desc.includes(query);
-    });
-    
-    if (filtered.length === 0) {
-        resultsContainer.innerHTML = `
-            <div class="flex flex-col items-center justify-center py-12 text-zinc-400">
-                <iconify-icon icon="solar:magnifer-bug-bold-duotone" class="text-4xl mb-3"></iconify-icon>
-                <p class="text-[0.9rem] font-bold">일치하는 시스템이 없습니다.</p>
-            </div>
-        `;
-        window.activePaletteApps = [];
-        return;
-    }
-    
-    window.activePaletteApps = filtered;
-    
-    if (selectedPaletteIndex >= filtered.length) {
-        selectedPaletteIndex = 0;
-    }
-    
-    resultsContainer.innerHTML = filtered.map((app, idx) => {
-        const isSelected = idx === selectedPaletteIndex;
-        const isLocked = app.isLocked === true || app.isLocked === 'TRUE' || app.isLocked === 'true';
-        const isActive = app.isActive !== false && app.isActive !== 'FALSE' && app.isActive !== 'false';
-        
-        const selectClasses = isSelected 
-            ? 'bg-zinc-900 text-white shadow-lg shadow-zinc-900/10 border-transparent scale-[1.01]' 
-            : 'bg-white/60 hover:bg-zinc-50 border-zinc-200/50 text-zinc-800';
-            
-        const textMuted = isSelected ? 'text-zinc-300' : 'text-zinc-500';
-        const textCat = isSelected ? 'bg-white/20 text-white' : 'bg-zinc-100 text-zinc-500 border border-zinc-200/30';
-        
-        let statusBadge = '';
-        if (!isActive) {
-            statusBadge = `<span class="px-2 py-0.5 text-[0.6rem] font-bold rounded ${isSelected ? 'bg-red-500 text-white' : 'bg-red-50 text-red-500 border border-red-100'} uppercase ml-2">Offline</span>`;
-        } else if (isLocked) {
-            statusBadge = `<span class="px-2 py-0.5 text-[0.6rem] font-bold rounded ${isSelected ? 'bg-yellow-500 text-black' : 'bg-yellow-50 text-yellow-600 border border-yellow-100'} uppercase ml-2"><iconify-icon icon="solar:lock-keyhole-bold" class="text-[0.7rem] align-middle mr-0.5"></iconify-icon>Secured</span>`;
-        }
-
-        const safeUrl = (app.url || '').toString().replace(/'/g, "\\'");
-        const safePw = (app.password || '').toString().replace(/'/g, "\\'");
-        
-        let actionStr = '';
-        if (!isActive) {
-            actionStr = `onclick="alert('시스템 점검 중입니다.')"`;
-        } else if (isLocked) {
-            actionStr = `onclick="window.closeCommandPalette(); openLockedApp('${safeUrl}', '${safePw}', '${app.id}')"`;
-        } else {
-            actionStr = `onclick="window.closeCommandPalette(); window.logClick('${app.id}'); window.open('${safeUrl}', '_blank')"`;
-        }
-        
-        return `
-            <div id="palette-item-${idx}" ${actionStr} class="flex items-center gap-4 px-5 py-4 rounded-2xl border transition-all duration-200 ease-out cursor-pointer ${selectClasses}" data-index="${idx}">
-                <div class="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center text-[1.5rem] ${isSelected ? 'bg-white/20' : 'bg-brand-green/10 text-brand-green'} border border-white/10">
-                    <iconify-icon icon="${app.icon || 'solar:link-circle-bold-duotone'}"></iconify-icon>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 flex-wrap mb-0.5">
-                        <span class="font-extrabold text-[1rem] tracking-tight leading-tight">${app.name}</span>
-                        <span class="px-2 py-0.5 text-[0.6rem] font-extrabold rounded uppercase tracking-wider ${textCat}">${app.category || '일반'}</span>
-                        ${statusBadge}
-                    </div>
-                    <span class="text-[0.8rem] leading-relaxed block truncate ${textMuted}">${app.description || '시스템에 대한 설명이 없습니다.'}</span>
-                </div>
-                <div class="shrink-0 flex items-center gap-2">
-                    ${clicks[app.id] ? `<span class="text-[0.65rem] font-bold ${isSelected ? 'text-zinc-300' : 'text-brand-green'} flex items-center gap-0.5"><iconify-icon icon="solar:fire-bold" class="text-[0.75rem]"></iconify-icon> ${clicks[app.id]}</span>` : ''}
-                    <iconify-icon icon="solar:arrow-right-up-linear" class="text-base opacity-60"></iconify-icon>
-                </div>
-            </div>
-        `;
-    }).join('');
-    
-    const rows = resultsContainer.querySelectorAll('[data-index]');
-    rows.forEach(row => {
-        row.addEventListener('mouseenter', (e) => {
-            selectedPaletteIndex = parseInt(e.currentTarget.dataset.index);
-            rows.forEach((r, i) => {
-                const isSel = i === selectedPaletteIndex;
-                if (isSel) {
-                    r.className = `flex items-center gap-4 px-5 py-4 rounded-2xl border transition-all duration-200 ease-out cursor-pointer bg-zinc-900 text-white shadow-lg shadow-zinc-900/10 border-transparent scale-[1.01]`;
-                } else {
-                    r.className = `flex items-center gap-4 px-5 py-4 rounded-2xl border transition-all duration-200 ease-out cursor-pointer bg-white/60 hover:bg-zinc-50 border-zinc-200/50 text-zinc-800`;
-                }
-            });
-        });
-    });
-}
-
-// Keydown Router for Command Palette
-function handlePaletteKeydown(e) {
-    const apps = window.activePaletteApps || [];
-    if (apps.length === 0) return;
-    
-    if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        selectedPaletteIndex = (selectedPaletteIndex + 1) % apps.length;
-        renderPaletteResults();
-        scrollSelectedItemIntoView();
-    } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        selectedPaletteIndex = (selectedPaletteIndex - 1 + apps.length) % apps.length;
-        renderPaletteResults();
-        scrollSelectedItemIntoView();
-    } else if (e.key === 'Enter') {
-        e.preventDefault();
-        const selectedApp = apps[selectedPaletteIndex];
-        if (selectedApp) {
-            const isLocked = selectedApp.isLocked === true || selectedApp.isLocked === 'TRUE' || selectedApp.isLocked === 'true';
-            const isActive = selectedApp.isActive !== false && selectedApp.isActive !== 'FALSE' && selectedApp.isActive !== 'false';
-            
-            closeCommandPalette();
-            
-            if (!isActive) {
-                alert('시스템 점검 중입니다.');
-            } else if (isLocked) {
-                const safeUrl = (selectedApp.url || '').toString().replace(/'/g, "\\'");
-                const safePw = (selectedApp.password || '').toString().replace(/'/g, "\\'");
-                openLockedApp(safeUrl, safePw, selectedApp.id);
-            } else {
-                window.logClick(selectedApp.id);
-                window.open(selectedApp.url, '_blank');
-            }
-        }
-    } else if (e.key === 'Escape') {
-        e.preventDefault();
-        closeCommandPalette();
-    }
-}
-
-// Scroll active items smoothly into screen if long lists arise
-/*******************************************************************************
- * 5 Premium Extension Logic Integrations
- ******************************************************************************/
-
-// 1. Live Status Health Check Loop
+/* ----------------------------------------------------
+   11. Health status Ping Logic
+   ---------------------------------------------------- */
 async function pingApp(app) {
     pingStatuses[app.id] = 'checking';
     try {
@@ -1014,14 +939,14 @@ function softRenderPing(appId) {
     statusDots.forEach(dot => {
         const state = pingStatuses[appId] || 'checking';
         if (state === 'checking') {
-            dot.className = "flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-500 border border-zinc-200 text-[0.65rem] font-bold";
-            dot.innerHTML = `<iconify-icon icon="solar:spinner-track-bold-duotone" class="animate-spin text-[0.75rem]"></iconify-icon> Checking`;
+            dot.className = "status-badge checking";
+            dot.innerHTML = `<iconify-icon icon="solar:spinner-track-bold-duotone" class="animate-spin" style="font-size: 0.75rem;"></iconify-icon> Checking`;
         } else if (state === 'online') {
-            dot.className = "flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#E3EFE8] text-brand-green border border-brand-green/20 text-[0.65rem] font-bold";
-            dot.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-brand-green animate-pulse"></span> Online`;
+            dot.className = "status-badge online";
+            dot.innerHTML = `<span class="status-badge-dot"></span> Online`;
         } else {
-            dot.className = "flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#FFF5F5] text-red-500 border border-red-200 text-[0.65rem] font-bold";
-            dot.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span> Offline`;
+            dot.className = "status-badge offline";
+            dot.innerHTML = `<span class="status-badge-dot"></span> Offline`;
         }
     });
 }
@@ -1042,7 +967,9 @@ function startHealthCheckLoop() {
     }, 30000);
 }
 
-// 2. Alt + [1-9] Quick-Launch Keyboard Shortcuts
+/* ----------------------------------------------------
+   12. Alt + [1-9] Quick shortcuts
+   ---------------------------------------------------- */
 document.addEventListener('keydown', (e) => {
     if (e.altKey && e.key >= '1' && e.key <= '9') {
         e.preventDefault();
@@ -1058,15 +985,17 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// 3. Custom Order Swap / Reorder Actions
+/* ----------------------------------------------------
+   13. Reorder Logic
+   ---------------------------------------------------- */
 window.toggleReorderMode = function() {
     reorderModeActive = !reorderModeActive;
     const reorderBtn = document.getElementById('reorder-toggle-btn');
     if (reorderBtn) {
         if (reorderModeActive) {
-            reorderBtn.className = "flex items-center gap-2 px-4 py-2 rounded-full text-[0.85rem] font-extrabold transition-all duration-300 bg-zinc-900 text-white shadow-md shadow-zinc-900/10";
+            reorderBtn.className = "reorder-btn active";
         } else {
-            reorderBtn.className = "flex items-center gap-2 px-4 py-2 rounded-full text-[0.85rem] font-extrabold transition-all duration-300 text-zinc-400 hover:text-zinc-800 hover:bg-white/50";
+            reorderBtn.className = "reorder-btn";
         }
     }
     renderApps();
@@ -1102,7 +1031,34 @@ window.moveApp = function(appId, direction, event) {
     }
 };
 
-// 4. Administrative Tabs Controller
+function updateReorderToggleVisibility() {
+    const reorderContainer = document.getElementById('reorder-toggle-container');
+    if (!reorderContainer) return;
+    if (sortBy === 'custom') {
+        reorderContainer.classList.remove('hidden');
+    } else {
+        reorderContainer.classList.add('hidden');
+        reorderModeActive = false;
+        const reorderBtn = document.getElementById('reorder-toggle-btn');
+        if (reorderBtn) {
+            reorderBtn.className = "reorder-btn";
+        }
+    }
+}
+
+/* ----------------------------------------------------
+   14. Theme switch customizer
+   ---------------------------------------------------- */
+window.setTheme = function(themeName) {
+    currentTheme = themeName;
+    localStorage.setItem('hub-theme', themeName);
+    document.body.className = '';
+    document.body.classList.add('theme-' + themeName);
+};
+
+/* ----------------------------------------------------
+   15. Admin Panel Tabs and Stats Analytics
+   ---------------------------------------------------- */
 window.switchAdminTab = function(tab) {
     const regTab = document.getElementById('tab-registry-btn');
     const anaTab = document.getElementById('tab-analytics-btn');
@@ -1113,14 +1069,14 @@ window.switchAdminTab = function(tab) {
     if (!regTab || !anaTab || !regView || !anaView) return;
     
     if (tab === 'registry') {
-        regTab.className = "py-4 text-[0.95rem] font-extrabold border-b-2 border-zinc-900 text-zinc-900 transition-all duration-300 focus:outline-none";
-        anaTab.className = "py-4 text-[0.95rem] font-bold border-b-2 border-transparent text-zinc-400 hover:text-zinc-700 transition-all duration-300 focus:outline-none";
+        regTab.className = "admin-tab-btn active";
+        anaTab.className = "admin-tab-btn";
         regView.classList.remove('hidden');
         anaView.classList.add('hidden');
         if (addAppBtn) addAppBtn.classList.remove('hidden');
     } else {
-        anaTab.className = "py-4 text-[0.95rem] font-extrabold border-b-2 border-zinc-900 text-zinc-900 transition-all duration-300 focus:outline-none";
-        regTab.className = "py-4 text-[0.95rem] font-bold border-b-2 border-transparent text-zinc-400 hover:text-zinc-700 transition-all duration-300 focus:outline-none";
+        anaTab.className = "admin-tab-btn active";
+        regTab.className = "admin-tab-btn";
         regView.classList.add('hidden');
         anaView.classList.remove('hidden');
         if (addAppBtn) addAppBtn.classList.add('hidden');
@@ -1128,7 +1084,6 @@ window.switchAdminTab = function(tab) {
     }
 };
 
-// 5. Admin Panel Stats & Native Analytics Chart Calculation
 window.renderAdminAnalytics = function() {
     const totalAppsEl = document.getElementById('stats-total-apps');
     const totalClicksEl = document.getElementById('stats-total-clicks');
@@ -1180,7 +1135,7 @@ window.renderAdminAnalytics = function() {
     
     if (clickData.length === 0) {
         chartContainer.innerHTML = `
-            <div class="text-center py-12 text-zinc-400 font-bold">
+            <div style="text-align: center; padding: 3rem; color: var(--color-text-secondary); font-weight: bold;">
                 분석할 이용 데이터가 없습니다.
             </div>
         `;
@@ -1189,24 +1144,19 @@ window.renderAdminAnalytics = function() {
     
     chartContainer.innerHTML = clickData.map((data, idx) => {
         const pct = maxClicks > 0 ? Math.round((data.clicks / maxClicks) * 100) : 0;
-        let badgeColor = 'bg-zinc-100 text-zinc-600';
-        if (idx === 0) badgeColor = 'bg-brand-yellow text-zinc-800';
-        else if (idx === 1) badgeColor = 'bg-brand-green/20 text-brand-green';
-        else if (idx === 2) badgeColor = 'bg-brand-mint/20 text-brand-mint';
-        
         return `
-            <div class="flex items-center gap-4 group">
-                <div class="w-8 h-8 rounded-full ${badgeColor} flex items-center justify-center text-[0.8rem] font-extrabold shrink-0 shadow-sm">${idx + 1}</div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex justify-between items-center mb-2">
-                        <div class="flex items-center gap-2">
-                            <span class="font-extrabold text-zinc-800 text-[0.95rem] truncate">${data.name}</span>
-                            <span class="text-[0.65rem] font-bold text-zinc-400 px-2 py-0.5 rounded bg-zinc-100 border border-zinc-200/50">${data.category}</span>
+            <div class="chart-row">
+                <div class="chart-rank-badge">${idx + 1}</div>
+                <div class="chart-bar-content">
+                    <div class="chart-bar-info">
+                        <div class="chart-bar-title-wrap">
+                            <span class="chart-bar-title">${data.name}</span>
+                            <span class="list-item-cat-label">${data.category}</span>
                         </div>
-                        <span class="text-[0.85rem] font-extrabold text-brand-green bg-brand-green/10 px-2.5 py-1 rounded-full"><iconify-icon icon="solar:fire-bold" class="mr-0.5 align-middle"></iconify-icon> ${data.clicks}회</span>
+                        <span class="chart-bar-clicks"><iconify-icon icon="solar:fire-bold" style="vertical-align: middle; margin-right: 0.15rem;"></iconify-icon>${data.clicks}회</span>
                     </div>
-                    <div class="w-full h-3 bg-zinc-100 rounded-full overflow-hidden border border-zinc-200/20">
-                        <div class="h-full bg-gradient-to-r from-brand-mint to-brand-green rounded-full transition-all duration-1000 ease-out" style="width: ${pct}%"></div>
+                    <div class="chart-track">
+                        <div class="chart-fill" style="width: ${pct}%"></div>
                     </div>
                 </div>
             </div>
@@ -1214,23 +1164,203 @@ window.renderAdminAnalytics = function() {
     }).join('');
 };
 
-function scrollSelectedItemIntoView() {
-    const el = document.getElementById(`palette-item-${selectedPaletteIndex}`);
-    if (el) {
-        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    }
+/* ----------------------------------------------------
+   16. Integrated Search & Autocomplete Dropdown Panel
+   ---------------------------------------------------- */
+function initSearchIntegration() {
+    if (!searchInput) return;
+
+    searchInput.addEventListener('focus', () => {
+        openSearchDropdown();
+    });
+
+    searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value.toLowerCase().trim();
+        selectedSearchIndex = 0;
+        if (!searchDropdownOpen) {
+            openSearchDropdown();
+        } else {
+            renderSearchDropdownResults();
+        }
+        renderApps(); // 실시간 필터링
+    });
+
+    searchInput.addEventListener('keydown', (e) => {
+        if (searchDropdownOpen) {
+            handleSearchKeydown(e);
+        }
+    });
+
+    // Close on click outside search container
+    document.addEventListener('click', (e) => {
+        if (searchContainer && !searchContainer.contains(e.target)) {
+            closeSearchDropdown();
+        }
+    });
+
+    // Shortcut Ctrl + K or Cmd + K to focus
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            searchInput.focus();
+            openSearchDropdown();
+        }
+    });
 }
 
-// Real-time input binding in search modal
-document.addEventListener('DOMContentLoaded', () => {
-    const paletteSearch = document.getElementById('palette-search-input');
-    if (paletteSearch) {
-        paletteSearch.addEventListener('input', () => {
-            selectedPaletteIndex = 0;
-            renderPaletteResults();
-        });
+function openSearchDropdown() {
+    if (!searchDropdownPanel) return;
+    searchDropdownOpen = true;
+    selectedSearchIndex = 0;
+    searchDropdownPanel.classList.add('show');
+    renderSearchDropdownResults();
+}
+
+window.closeSearchDropdown = function() {
+    if (!searchDropdownPanel) return;
+    searchDropdownOpen = false;
+    searchDropdownPanel.classList.remove('show');
+};
+
+function renderSearchDropdownResults() {
+    if (!searchDropdownList || !searchInput) return;
+    
+    const query = searchInput.value.toLowerCase().trim();
+    
+    const filtered = appsData.filter(app => {
+        const name = (app.name || '').toLowerCase();
+        const cat = (app.category || '일반').toLowerCase();
+        const desc = (app.description || '').toLowerCase();
+        return name.includes(query) || cat.includes(query) || desc.includes(query);
+    });
+    
+    // Sort dropdown results by popularity (highest clicks first)
+    filtered.sort((a, b) => {
+        const clicksA = clicks[a.id] || 0;
+        const clicksB = clicks[b.id] || 0;
+        return clicksB - clicksA;
+    });
+    
+    const displayApps = filtered.slice(0, 5);
+    activeSearchApps = displayApps;
+    
+    if (displayApps.length === 0) {
+        searchDropdownList.innerHTML = `
+            <div style="text-align: center; padding: 2rem 1rem; color: var(--color-text-secondary); font-size: 0.9rem; font-weight: 700;">
+                <iconify-icon icon="solar:magnifer-bug-bold-duotone" style="display: block; margin: 0 auto 0.5rem; font-size: 2.25rem; opacity: 0.5;"></iconify-icon>
+                일치하는 시스템이 없습니다.
+            </div>
+        `;
+        return;
     }
-});
+    
+    if (selectedSearchIndex >= displayApps.length) {
+        selectedSearchIndex = 0;
+    }
+    
+    searchDropdownList.innerHTML = displayApps.map((app, idx) => {
+        const isSelected = idx === selectedSearchIndex;
+        const isLocked = app.isLocked === true || app.isLocked === 'TRUE' || app.isLocked === 'true';
+        const isActive = app.isActive !== false && app.isActive !== 'FALSE' && app.isActive !== 'false';
+        
+        const selectedClass = isSelected ? 'selected' : '';
+        const categoryLabel = app.category || '일반';
+        
+        let statusBadge = '';
+        if (!isActive) {
+            statusBadge = `<span class="status-badge offline" style="margin-left: 0.5rem;"><span class="status-badge-dot"></span>Offline</span>`;
+        } else if (isLocked) {
+            statusBadge = `<span class="status-badge secured" style="margin-left: 0.5rem;"><iconify-icon icon="solar:lock-keyhole-bold" class="text-[0.7rem] align-middle mr-0.5"></iconify-icon>Secured</span>`;
+        }
+
+        const safeUrl = (app.url || '').toString().replace(/'/g, "\\'");
+        const safePw = (app.password || '').toString().replace(/'/g, "\\'");
+        
+        let actionStr = '';
+        if (!isActive) {
+            actionStr = `onclick="alert('시스템 점검 중입니다.')"`;
+        } else if (isLocked) {
+            actionStr = `onclick="closeSearchDropdown(); openLockedApp('${safeUrl}', '${safePw}', '${app.id}')"`;
+        } else {
+            actionStr = `onclick="closeSearchDropdown(); window.logClick('${app.id}'); window.open('${safeUrl}', '_blank')"`;
+        }
+        
+        return `
+            <div id="search-dropdown-item-${idx}" ${actionStr} class="search-dropdown-item ${selectedClass}" data-index="${idx}">
+                <div class="search-dropdown-item-icon">
+                    <iconify-icon icon="${app.icon || 'solar:link-circle-bold-duotone'}"></iconify-icon>
+                </div>
+                <div class="search-dropdown-item-content">
+                    <div class="search-dropdown-item-header">
+                        <span class="search-dropdown-item-title">${app.name}</span>
+                        <span class="search-dropdown-item-category">${categoryLabel}</span>
+                        ${statusBadge}
+                    </div>
+                    <span class="search-dropdown-item-description">${app.description || '시스템에 대한 설명이 없습니다.'}</span>
+                </div>
+                <div class="search-dropdown-item-action">
+                    ${clicks[app.id] ? `<span style="font-weight: 700; margin-right: 0.5rem;"><iconify-icon icon="solar:fire-bold" style="vertical-align: middle; margin-right: 0.15rem;"></iconify-icon>${clicks[app.id]}</span>` : ''}
+                    <iconify-icon icon="solar:arrow-right-up-linear"></iconify-icon>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // Hover item selector listener
+    const rows = searchDropdownList.querySelectorAll('.search-dropdown-item');
+    rows.forEach(row => {
+        row.addEventListener('mouseenter', (e) => {
+            selectedSearchIndex = parseInt(e.currentTarget.dataset.index);
+            rows.forEach((r, i) => {
+                if (i === selectedSearchIndex) {
+                    r.classList.add('selected');
+                } else {
+                    r.classList.remove('selected');
+                }
+            });
+        });
+    });
+}
+
+function handleSearchKeydown(e) {
+    const apps = activeSearchApps || [];
+    if (apps.length === 0) return;
+    
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedSearchIndex = (selectedSearchIndex + 1) % apps.length;
+        renderSearchDropdownResults();
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedSearchIndex = (selectedSearchIndex - 1 + apps.length) % apps.length;
+        renderSearchDropdownResults();
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const selectedApp = apps[selectedSearchIndex];
+        if (selectedApp) {
+            const isLocked = selectedApp.isLocked === true || selectedApp.isLocked === 'TRUE' || selectedApp.isLocked === 'true';
+            const isActive = selectedApp.isActive !== false && selectedApp.isActive !== 'FALSE' && selectedApp.isActive !== 'false';
+            
+            closeSearchDropdown();
+            if (searchInput) searchInput.blur();
+            
+            if (!isActive) {
+                alert('시스템 점검 중입니다.');
+            } else if (isLocked) {
+                const safeUrl = (selectedApp.url || '').toString().replace(/'/g, "\\'");
+                const safePw = (selectedApp.password || '').toString().replace(/'/g, "\\'");
+                openLockedApp(safeUrl, safePw, selectedApp.id);
+            } else {
+                window.logClick(selectedApp.id);
+                window.open(selectedApp.url, '_blank');
+            }
+        }
+    } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeSearchDropdown();
+        if (searchInput) searchInput.blur();
+    }
+}
 
 // App 암호 잠금 및 해제 메타 연동 모달 핸들러
 window.openLockedApp = function(url, correctPassword, appId) {
@@ -1242,28 +1372,4 @@ window.openLockedApp = function(url, correctPassword, appId) {
     } else {
         alert("비밀번호가 올바르지 않습니다.");
     }
-};
-
-// customOrder toggle display updater
-function updateReorderToggleVisibility() {
-    const reorderContainer = document.getElementById('reorder-toggle-container');
-    if (!reorderContainer) return;
-    if (sortBy === 'custom') {
-        reorderContainer.classList.remove('hidden');
-    } else {
-        reorderContainer.classList.add('hidden');
-        reorderModeActive = false;
-        const reorderBtn = document.getElementById('reorder-toggle-btn');
-        if (reorderBtn) {
-            reorderBtn.className = "flex items-center gap-2 px-4 py-2 rounded-full text-[0.85rem] font-extrabold transition-all duration-300 text-zinc-400 hover:text-zinc-800 hover:bg-white/50";
-        }
-    }
-}
-
-// Theme switch customizer
-window.setTheme = function(themeName) {
-    currentTheme = themeName;
-    localStorage.setItem('hub-theme', themeName);
-    document.body.className = '';
-    document.body.classList.add('theme-' + themeName);
 };
