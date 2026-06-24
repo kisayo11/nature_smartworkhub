@@ -2502,3 +2502,19 @@ body.theme-cyber .toggle-input {
 .card-icon-box { width: 2.8rem; height: 2.8rem; }
 .apps-list-view { max-width: 760px; margin: 0 auto; }
 .list-item-description,.card-description { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .76rem; }
+/* Unified system tiles: no bento, URLs, or competing dashboard controls. */
+.controls-wrap { display: none; }
+.apps-grid { max-width: 1040px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+.app-card,.app-card.bento-featured { grid-column: auto; min-height: 176px; border-radius: 14px; }
+.app-card-inner,.app-card.bento-featured .app-card-inner { min-height: 176px; padding: 1.25rem; flex-direction: column; align-items: flex-start; gap: .9rem; }
+.app-card-inner > div:first-child { margin-bottom: 0 !important; }
+.card-icon-box { width: 2.65rem; height: 2.65rem; border-radius: .7rem; }
+.app-card:hover .card-icon-box { transform: none; }
+.card-body,.app-card.bento-featured .card-body { margin-top: auto; width: 100%; }
+.card-cat-clicks-row { margin-bottom: .45rem; }
+.card-clicks-label,.card-footer { display: none; }
+.card-title { font-size: 1.05rem; }
+.card-description { margin-bottom: 0; font-family: var(--font-primary); font-size: .84rem; line-height: 1.45; -webkit-line-clamp: 2; }
+.card-arrow-box { display: none; }
+.card-favorite-btn { background: transparent; box-shadow: none; }
+@media screen and (max-width:768px) { .apps-grid { grid-template-columns: 1fr; } .app-card,.app-card.bento-featured,.app-card-inner,.app-card.bento-featured .app-card-inner { min-height: 148px; } }
