@@ -2493,3 +2493,30 @@ body.theme-cyber .toggle-input {
 }
 
 
+/* Simplified staff launcher: calm, consistent, search-first UI. */
+body.theme-classic { --color-bg:#f8faf8; --color-card-bg:#fff; --color-card-inner-from:#fff; --color-card-inner-to:#fff; --color-border:#dfe7e1; --color-border-hover:#9ebba7; --shadow-premium:0 4px 16px rgba(24,48,31,.04); --shadow-hover:0 8px 24px rgba(24,48,31,.08); }
+.ambient-bg,.noise-overlay,.theme-selector-capsule,.clock-widget,.workspace-tag,.controls-wrap,.card-clicks-label,.card-arrow-box,.shortcut-kbd-badge,.badge-capsule-row,.drawer-separator { display:none!important; }
+body { background:var(--color-bg); }
+.sidebar { width:248px; background:#fff; border-right:1px solid var(--color-border); box-shadow:none; backdrop-filter:none; }
+.sidebar-header,.main-header { height:96px; }
+.main-header { padding:0 3rem; background:#fff; border-bottom:1px solid var(--color-border); }
+.main-scroll-body { padding:2.5rem 3rem 4rem; }
+.workspace-title-row { margin-bottom:2rem; }
+.workspace-title { font-size:2.25rem; }
+.search-input { border-radius:.65rem; background:#fff; box-shadow:none; }
+.search-shortcut-badge { border-radius:.35rem; }
+.category-item { border-radius:.55rem; padding:.75rem .85rem; }
+.category-item.active { background:var(--color-brand-light); color:var(--color-brand); border-color:transparent; box-shadow:none; }
+.favorites-drawer { margin-bottom:2rem; padding-bottom:2rem; border-bottom:1px solid var(--color-border); }
+.apps-grid { grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:1rem; }
+.app-card,.app-list-item { border-radius:.75rem; background:#fff; backdrop-filter:none; box-shadow:var(--shadow-premium); }
+.app-card.bento-featured { grid-column:auto; }
+.app-card:hover,.app-list-item:hover { transform:translateY(-2px); box-shadow:var(--shadow-hover); }
+.app-card-inner { padding:1.25rem; border-radius:calc(.75rem - 1px); background:#fff; box-shadow:none; }
+.app-card.bento-featured .app-card-inner { flex-direction:column; gap:0; align-items:stretch; }
+.card-icon-box { width:2.75rem; height:2.75rem; border-radius:.6rem; box-shadow:none; }
+.app-card:hover .card-icon-box { transform:none; }
+.card-favorite-btn { top:1rem; right:1rem; width:2rem; height:2rem; border-radius:.45rem; background:transparent; box-shadow:none; }
+.card-footer { border-top:0; padding-top:0; }
+.card-description { margin-bottom:.75rem; }
+@media screen and (max-width:768px) { .main-scroll-body { padding:1.5rem; } .main-header { padding:0 1.5rem; } }
