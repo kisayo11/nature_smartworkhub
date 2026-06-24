@@ -2493,3 +2493,23 @@ body.theme-cyber .toggle-input {
 }
 
 
+/* Search-first system directory. No generated text or interaction overlays. */
+.main-scroll-body-inner { max-width: 920px; margin: 0 auto; }
+.category-accordion-container { display: flex; flex-direction: column; gap: .65rem; }
+.category-section-header { display: none; }
+.category-section-grid,.category-section-grid.apps-grid { display: flex; flex-direction: column; gap: .65rem; overflow: visible; max-height: none; }
+.category-section-grid.collapsed { display: flex; max-height: none; opacity: 1; transform: none; }
+.app-card,.app-card.bento-featured { display: block; min-height: 76px; grid-column: auto; border-radius: .7rem; }
+.app-card-inner,.app-card.bento-featured .app-card-inner { min-height: 76px; padding: .85rem 1rem; display: flex; flex-direction: row; align-items: center; gap: .8rem; }
+.app-card-inner > div:first-child { margin: 0 !important; }
+.card-icon-box { width: 2.4rem; height: 2.4rem; border-radius: .55rem; flex: none; }
+.card-body,.app-card.bento-featured .card-body { margin: 0; min-width: 0; justify-content: center; }
+.card-cat-clicks-row { margin: 0 0 .2rem; }
+.card-category-label { text-transform: none; letter-spacing: 0; font-size: .72rem; }
+.card-title-row { margin-bottom: .1rem; }
+.card-title { font-size: 1rem; }
+.card-description { margin: 0; font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-footer { display: none; }
+.app-card:hover,.app-list-item:hover { transform: none; }
+.card-action-overlay { z-index: 10; }
+.card-favorite-btn { z-index: 20; }
