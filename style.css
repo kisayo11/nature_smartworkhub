@@ -2533,3 +2533,26 @@ body { background:var(--color-bg); }
 .card-description { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .app-card.bento-featured .app-card-inner { flex-direction: row; align-items: center; gap: .9rem; }
 @media screen and (max-width:768px) { .main-scroll-body-inner { max-width: none; } .card-description { white-space: normal; display: -webkit-box; } }
+/* Staff directory layout: one searchable, scannable system list. */
+.main-scroll-body-inner { max-width: 880px; margin: 0 auto; }
+.workspace-title-row { align-items: end; }
+.workspace-title::after { content: '??? ???? ????? ??? ?????.'; display: block; margin-top: .55rem; color: var(--color-text-secondary); font-size: .9rem; font-weight: 500; letter-spacing: 0; }
+.category-accordion-container { display: flex; flex-direction: column; gap: .7rem; }
+.category-section-header { display: none; }
+.category-section-grid,.category-section-grid.apps-grid { display: flex; flex-direction: column; gap: .7rem; overflow: visible; max-height: none; }
+.category-section-grid.collapsed { display: flex; max-height: none; opacity: 1; transform: none; }
+.app-card,.app-card.bento-featured { display: block; min-height: 78px; grid-column: auto; border-radius: .7rem; }
+.app-card-inner,.app-card.bento-featured .app-card-inner { min-height: 78px; padding: .9rem 1rem; display: flex; flex-direction: row; align-items: center; gap: .85rem; }
+.app-card-inner > div:first-child { margin: 0 !important; }
+.card-icon-box { width: 2.4rem; height: 2.4rem; border-radius: .55rem; flex: none; }
+.card-body,.app-card.bento-featured .card-body { margin: 0; min-width: 0; justify-content: center; }
+.card-cat-clicks-row { margin: 0 0 .2rem; }
+.card-category-label { text-transform: none; letter-spacing: 0; font-size: .72rem; }
+.card-title-row { margin-bottom: .15rem; }
+.card-title { font-size: 1rem; }
+.card-description { margin: 0; font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-footer { display: none; }
+.card-favorite-btn { top: 50%; right: 1rem; transform: translateY(-50%); }
+.app-card:hover .card-favorite-btn { transform: translateY(-50%); }
+.app-card:hover { transform: none; }
+@media screen and (max-width:768px) { .main-scroll-body-inner { max-width: none; } .workspace-title::after { font-size: .82rem; } .card-description { white-space: normal; display: -webkit-box; } }
