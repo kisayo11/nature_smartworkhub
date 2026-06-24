@@ -18,7 +18,7 @@ let searchDropdownOpen = false;
 let selectedSearchIndex = 0;
 let activeSearchApps = [];
 
-let currentTheme = localStorage.getItem('hub-theme') || 'classic';
+let currentTheme = 'classic';
 let reorderModeActive = false;
 let pingStatuses = {}; // format: { appId: 'checking' | 'online' | 'offline' }
 let customOrder = JSON.parse(localStorage.getItem('hub-custom-order')) || [];
