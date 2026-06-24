@@ -528,7 +528,7 @@ function renderApps() {
     }
 
     // 5. ACCORDION GROUPING (Only when viewing "All" and not searching)
-    if (currentCategory === 'All' && searchQuery === '') {
+    if (currentCategory === 'All' && searchQuery === '' && viewMode === 'grouped') {
         // Group by Category
         const categoriesMap = {};
         filteredApps.forEach(app => {
