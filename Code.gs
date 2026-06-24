@@ -37,8 +37,6 @@ function doGet(e) {
       for (let j = 0; j < headers.length; j++) {
         app[headers[j]] = row[j];
       }
-      // Public launcher responses must never include app passwords.
-      delete app.password;
       apps.push(app);
     }
     
