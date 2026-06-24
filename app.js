@@ -363,7 +363,7 @@ function generateAppCard(app, index, isFavoriteItem = false) {
                             ${clicks[app.id] ? `<span class="card-clicks-label"><iconify-icon icon="solar:fire-bold" style="vertical-align: middle; margin-right: 0.15rem;"></iconify-icon>${clicks[app.id]}회</span>` : ''}
                             ${badgesContainer}
                         </div>
-                        <p class="list-item-description">${app.description || '시스템에 대한 설명이 없습니다.'}</p>
+                        <p class="list-item-description">${app.url || 'URL 정보 없음'}</p>
                     </div>
                 </div>
                 
@@ -411,7 +411,7 @@ function generateAppCard(app, index, isFavoriteItem = false) {
                     ${isActive && !isLocked ? '<div class="card-arrow-box"><iconify-icon icon="solar:arrow-right-up-linear"></iconify-icon></div>' : ''}
                 </div>
                 
-                <p class="card-description">${app.description || '시스템에 대한 설명이 없습니다.'}</p>
+                <p class="card-description">${app.url || 'URL 정보 없음'}</p>
                 
                 <div class="card-footer">
                     ${badgesContainer}
@@ -1296,7 +1296,7 @@ function renderSearchDropdownResults() {
                         <span class="search-dropdown-item-category">${categoryLabel}</span>
                         ${statusBadge}
                     </div>
-                    <span class="search-dropdown-item-description">${app.description || '시스템에 대한 설명이 없습니다.'}</span>
+                    <span class="search-dropdown-item-description">${app.url || 'URL 정보 없음'}</span>
                 </div>
                 <div class="search-dropdown-item-action">
                     ${clicks[app.id] ? `<span style="font-weight: 700; margin-right: 0.5rem;"><iconify-icon icon="solar:fire-bold" style="vertical-align: middle; margin-right: 0.15rem;"></iconify-icon>${clicks[app.id]}</span>` : ''}
