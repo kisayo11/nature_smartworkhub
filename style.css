@@ -2520,16 +2520,3 @@ body { background:var(--color-bg); }
 .card-footer { border-top:0; padding-top:0; }
 .card-description { margin-bottom:.75rem; }
 @media screen and (max-width:768px) { .main-scroll-body { padding:1.5rem; } .main-header { padding:0 1.5rem; } }
-/* Single directory list: categories filter the content; they do not create folders. */
-.main-scroll-body-inner { max-width: 960px; margin: 0 auto; }
-.apps-grid { display: flex; flex-direction: column; gap: .7rem; }
-.app-card { min-height: 84px; border-radius: .7rem; }
-.app-card-inner { min-height: 84px; padding: 1rem 1.15rem; flex-direction: row; align-items: center; gap: .9rem; }
-.app-card-inner > div:first-child { margin-bottom: 0 !important; }
-.card-icon-box { width: 2.5rem; height: 2.5rem; flex: none; }
-.card-body { margin-top: 0; min-width: 0; justify-content: center; }
-.card-cat-clicks-row { margin-bottom: .2rem; }
-.card-category-label { font-size: .72rem; text-transform: none; letter-spacing: 0; }
-.card-description { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.app-card.bento-featured .app-card-inner { flex-direction: row; align-items: center; gap: .9rem; }
-@media screen and (max-width:768px) { .main-scroll-body-inner { max-width: none; } .card-description { white-space: normal; display: -webkit-box; } }
