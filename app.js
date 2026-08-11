@@ -108,6 +108,13 @@ window.setViewMode = function(mode) {
 document.addEventListener('DOMContentLoaded', () => {
     initClock();
     
+    // Restore Admin Session if previously logged in
+    const savedAdminPw = sessionStorage.getItem('hub-admin-password');
+    if (savedAdminPw) {
+        isAdmin = true;
+        window.adminPassword = savedAdminPw;
+    }
+    
     // 테마 설정 복원
     setTheme(currentTheme);
     const themeSelector = document.getElementById('theme-selector');
@@ -268,9 +275,8 @@ function generateAppCard(app, index, isFavoriteItem = false) {
     const isActive = app.isActive !== false && app.isActive !== 'FALSE' && app.isActive !== 'false';
     const isFav = favorites.includes(app.id);
 
-    // bento-grid feature layout trigger: if the app has clicks >= 3 or is first in main grid
-    const isFeatured = !isFavoriteItem && viewMode === 'grid' && ((clicks[app.id] || 0) >= 3 || index === 0);
-    const bentoClass = isFeatured ? 'bento-featured' : '';
+    // Unified grid card layout
+    const bentoClass = '';
 
     // favorite button on cards
     const favoriteButton = `
@@ -411,7 +417,7 @@ function generateAppCard(app, index, isFavoriteItem = false) {
                     ${isActive && !isLocked ? '<div class="card-arrow-box"><iconify-icon icon="solar:arrow-right-up-linear"></iconify-icon></div>' : ''}
                 </div>
                 
-                <p class="card-description">${app.description || '시스템에 대한 설명이 없습니다.'}</p>
+                <p class="card-description">${app.description || '주요 업무 시스템'}</p>
                 
                 <div class="card-footer">
                     ${badgesContainer}
@@ -570,7 +576,7 @@ function renderApps() {
         document.getElementById('pagination-container').innerHTML = ''; // No pagination in grouped accordion view
     } else {
         // 6. FLAT VIEW (When filtering specific category or typing search)
-        const itemsPerPage = viewMode === 'grid' ? 8 : 5;
+        const itemsPerPage = viewMode === 'grid' ? 10 : 5;
         const totalItems = filteredApps.length;
         const totalPages = Math.ceil(totalItems / itemsPerPage);
 
@@ -702,6 +708,7 @@ function loginAdmin() {
     if (!pw) return alert("비밀번호를 입력해주세요.");
     isAdmin = true;
     window.adminPassword = pw;
+    sessionStorage.setItem('hub-admin-password', pw);
     closeModal('login-modal');
     openAdminDashboard();
 }
@@ -870,29 +877,39 @@ window.deleteApp = async function (id) {
 
 async function requestBackend(action, appData) {
     alertStatus('동기화 중...', 'success');
+    const adminPass = window.adminPassword || sessionStorage.getItem('hub-admin-password') || 'admin';
     try {
         const response = await fetch(SCRIPT_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: action, password: window.adminPassword, appData: appData })
+            headers: {
+                'Content-Type': 'text/plain;charset=utf-8'
+            },
+            redirect: 'follow',
+            body: JSON.stringify({ action: action, password: adminPass, appData: appData })
         });
         const result = await response.json();
         if (result.status === 'success') {
             alertStatus('저장됨', 'success');
+            alert(action === 'delete' ? '성공적으로 삭제되었습니다.' : '새 시스템 정보가 성공적으로 반영되었습니다.');
             await fetchApps();
             if (document.getElementById('admin-dashboard-modal').getAttribute('data-show') === 'true') {
                 renderAdminTable();
             }
         } else {
-            alertStatus('권한 오류: ' + result.message, 'error');
-            if (result.message.includes('비밀번호')) {
+            alertStatus('오류: ' + result.message, 'error');
+            alert('작업 실패: ' + result.message);
+            if (result.message && result.message.includes('비밀번호')) {
                 isAdmin = false;
                 window.adminPassword = '';
+                sessionStorage.removeItem('hub-admin-password');
                 closeModal('admin-dashboard-modal');
                 openModal('login-modal');
             }
         }
     } catch (e) {
         alertStatus('네트워크 에러', 'error');
+        alert('네트워크 요청 실패: Google Apps Script 배포 URL 또는 인터넷 연결을 확인하세요.\n(' + e.message + ')');
+        console.error('requestBackend error:', e);
     }
 }
 
